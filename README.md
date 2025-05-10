@@ -25,8 +25,8 @@ You should then see
 0.47421368956565857 1.405853033065796 -0.10289861261844635
 -0.830163836479187 0.1463543325662613 0.819881796836853
 ```
-In this case, the first two columns your input variables. The last column is your target
-variable.
+In this case, the first two columns your input variables. The last column is always
+your target variable.
 
 You can also customize the random seed, and amount of gaussian noise used to
 generate the dataset. Checkout `xyn -h` for more.
