@@ -34,7 +34,7 @@ generate the dataset. Checkout `xyn -h` for more.
 ## Install
 Installation requires the Python programming language as well as the PyPI (`pip`) package manager.
 
-### Step 1: Install Python and pip (skip this if it's already installed)
+### Step 1: Install Python and PyPI (skip this if it's already installed)
 Python and PyPI are most likely already installed on your computer. Try executing:
 ```
 python --version
