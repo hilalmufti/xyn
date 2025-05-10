@@ -12,7 +12,7 @@ xyn (pronounced "syn") is a simple program to generate synthetic data.
 ## Usage
 
 Using `xyn` is really easy. To generate a synthetic dataset consisting of 5
-samples with 2D inputs, simply run:
+samples with 2-dimensional inputs, simply run:
 ```
 xyn 5 2
 ```

@@ -80,6 +80,8 @@ def main() -> None:
 
 # TODO:
 # - [ ] Maybe remove delim argument?
+# - [ ] feat: improve readme by showing how to use `xyn` with other unix commands
+# - [ ] feat: Add examples to `-h` help
 # - [ ] feat: improve typechecking of ndims
 # - [ ] feat: typechecking
 # - [ ] feat: tests
