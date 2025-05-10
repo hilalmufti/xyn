@@ -58,8 +58,10 @@ documentation](https://docs.astral.sh/uv/getting-started/installation/)
 Now that `pip` is installed, we simply run one of the following in the terminal
 to install `xyn`:
 ```
-uv pip install https://github.com/hilalmufti/xyn.git # using uv
-# or 
-pip install https://github.com/hilalmufti/xyn.git # using PyPI
+# using uv
+uv pip install https://github.com/hilalmufti/xyn.git
+
+# using PyPI
+pip install https://github.com/hilalmufti/xyn.git
 ```
 
