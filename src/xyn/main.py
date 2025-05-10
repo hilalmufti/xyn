@@ -92,6 +92,7 @@ def main() -> None:
 # TODO:
 # - [x] feat: remove delim argument
 # - [x] feat: add verbose mode
+# - [ ] fix: fix emacs/magit git setup
 # - [ ] feat: improve readme by showing how to use `xyn` with other unix commands
 # - [ ] feat: Add examples to `-h` help
 # - [ ] feat: improve typechecking of ndims
