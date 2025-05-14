@@ -51,11 +51,12 @@ def main() -> None:
                         type=float,
                         default=1e-2,
                         help="Use the given mean to generate gaussian noise used to generate data")
-    parser.add_argument("-v", "--verbose",
+    parser.add_argument("-a", "--all",
                         action='store_true',
-                        help="Enable verbose mode. More specifically, will also \
+                        help="Show all the data structures used to generate the \
+                        dataset. More specifically, will also \
                         print out the exact true parameters and gaussian noise \
-                        used to generate the data.")
+                        used for generation.")
     parser.add_argument("n_samples", type=int, help="Number of total data samples to generate")
     parser.add_argument("n_features", type=int, help="Number of input features to generate data")
 
@@ -65,7 +66,7 @@ def main() -> None:
     noise_scale = args.mean
     n_samples = args.n_samples
     n_features = args.n_features
-    is_verbose = args.verbose
+    is_show_all = args.all
 
     key = mx.random.key(seed)
 
@@ -82,7 +83,7 @@ def main() -> None:
 
     lines = mx.concatenate([inputs, targets[:, None]], axis=1).tolist()
 
-    if is_verbose:
+    if is_show_all:
         print("weights")
         print(show(true_params.tolist()))
         print("noise")
@@ -92,6 +93,8 @@ def main() -> None:
 # TODO:
 # - [x] feat: remove delim argument
 # - [x] feat: add verbose mode
+# - [ ] feat: rename verbose to all
+# - [ ] fix: fix scientific notation displaying
 # - [ ] fix: fix emacs/magit git setup
 # - [ ] feat: improve readme by showing how to use `xyn` with other unix commands
 # - [ ] feat: Add examples to `-h` help
