@@ -12,6 +12,10 @@ LOGO = [
     ]
 
 # %%
+def unlines(xs):
+    return "\n".join(xs)
+
+# %%
 def ndims(xs):
     match xs:
         case []:
@@ -29,7 +33,7 @@ def show_list_by(delim: str, xs: list):
     if n == 1:
         return delim.join(map(str, xs))
     elif n == 2:
-        return "\n".join(map(lambda x: show_list_by(delim, x), xs))
+        return unlines(map(lambda x: show_list_by(delim, x), xs))
     else:
         raise Exception()
 
@@ -38,7 +42,7 @@ show_list = partial(show_list_by, " ")
 
 # %%
 def show_dict(mp):
-    return "\n".join(k + "\n" + v for k, v in mp.items())
+    return unlines(k + "\n" + v for k, v in mp.items())
 
 # %%
 def make_regression_dataset(config, key):
@@ -119,9 +123,9 @@ def main() -> None:
         "n_outputs": args.n_outputs,
         "noise_scale": args.mean
     }
-    dataset, aux = make_regression_dataset(config, mx.random.key(seed))
+    dataset, aux = make_sum_dataset(config, mx.random.key(seed))
     if args.all:
-        print(show_dict({k: show_list(v) if isinstance(v, list) else v for k, v in aux.items()}))
+        print(show_dict({k: show_list(v) for k, v in aux.items()}))
     print(show_list(dataset.tolist()))
 
 # TODO:
@@ -131,6 +135,7 @@ def main() -> None:
 # - [ ] feat: add `xyn reg` subcommand
 # - [x] feat: add sum dataset
 # - [ ] fix: have sum dataset be exact sum (I think matmul is breaking it)
+# - [ ] feat: add `xyn sum` subcommand
 # - [ ] feat: add sum dataset for integral valued inputs
 # - [ ] feat: add real-valued binary classification dataset
 # - [ ] feat: add header display option
@@ -145,5 +150,5 @@ def main() -> None:
 # - [ ] fix: update readme for multiple output variables
 # - [ ] feat: binary classification
 # - [ ] feat: multi-dimensional classification
-# - [ ] feat: train/test data
-# - [ ] feat: specify where the true parameters come from
+# - [x] feat: train/test data (done by datasplit program)
+# - [ ] refactor: refactor make_sum_dataset, make_regression_dataset
