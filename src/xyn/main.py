@@ -138,9 +138,6 @@ def show_header(n_features, n_outputs):
 
 # %%
 
-# ds = load_dataset("ylecun/mnist")
-
-
 def make_mnist_dataset(config, key):
     ...
 
