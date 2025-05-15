@@ -42,20 +42,62 @@ def print_list(xs):
     print(show_list(xs))
 
 # %%
-def make_regression_dataset(n_samples, n_features, noise_scale, key):
+def generic_print(x):
+    if isinstance(x, list):
+        print_list(x)
+    else:
+        print(x)
+
+# %%
+def print_dict(mp):
+   for k, v in mp.items():
+       print(k)
+       generic_print(v)
+
+# %%
+def make_regression_dataset(config, key):
+    n_samples = config["n_samples"]
+    n_features = config["n_features"]
+    n_outputs = config["n_outputs"]
+    noise_scale = config["noise_scale"]
+
     key, subkey = mx.random.split(key)
-    true_weights = mx.random.normal([n_features], key=subkey)
+    true_weights = mx.random.normal([n_features, n_outputs], key=subkey)
 
     key, subkey = mx.random.split(key)
     inputs = mx.random.normal([n_samples, n_features], key=subkey)
 
     key, subkey = mx.random.split(key)
-    noise = noise_scale * mx.random.normal([n_samples], key=subkey)
+    noise = noise_scale * mx.random.normal([n_samples, n_outputs], key=subkey)
 
     targets = mx.matmul(inputs, true_weights) + noise
 
-    return mx.concatenate([inputs, targets[:, None]], axis=1)
+    aux = {'weights': true_weights.tolist(),
+           'noise': noise.tolist()}
+    return mx.concatenate([inputs, targets], axis=1), aux
 
+# %%
+def make_sum_dataset(config, key):
+    n_samples = config["n_samples"]
+    n_features = config["n_features"]
+    n_outputs = config["n_outputs"]
+    noise_scale = config["noise_scale"]
+
+    assert n_outputs == 1, "sum dataset must have exactly one output"
+
+    true_weights = mx.ones([n_features, n_outputs])
+
+    key, subkey = mx.random.split(key)
+    inputs = mx.random.normal([n_samples, n_features], key=subkey)
+
+    key, subkey = mx.random.split(key)
+    noise = noise_scale * mx.random.normal([n_samples, n_outputs], key=subkey)
+
+    targets = mx.matmul(inputs, true_weights) + noise
+
+    aux = {'weights': true_weights.tolist(),
+           'noise': noise.tolist()}
+    return mx.concatenate([inputs, targets], axis=1), aux
 
 # %%
 def main() -> None:
@@ -74,10 +116,8 @@ def main() -> None:
                         to generate data")
     parser.add_argument("-a", "--all",
                         action='store_true',
-                        help="Show all the data structures used to generate the \
-                        dataset. More specifically, will also \
-                        print out the exact true parameters and gaussian noise \
-                        used for generation.")
+                        help="Show all the intermediate data structures used to \
+                        generate the dataset")
     parser.add_argument("n_samples", type=int, help="Number of total data samples to generate")
     parser.add_argument("n_features", type=int, help="Number of input features \
                         to generate data")
@@ -86,31 +126,16 @@ def main() -> None:
     args = parser.parse_args()
 
     seed = args.seed
-    noise_scale = args.mean
-    n_samples = args.n_samples
-    n_features = args.n_features
-    n_outputs = args.n_outputs
-    is_show_all = args.all
 
-    key = mx.random.key(seed)
-
-    key, subkey = mx.random.split(key)
-    true_weights = mx.random.normal([n_features, n_outputs], key=subkey)
-
-    key, subkey = mx.random.split(key)
-    inputs = mx.random.normal([n_samples, n_features], key=subkey)
-
-    key, subkey = mx.random.split(key)
-    noise = noise_scale * mx.random.normal([n_samples, n_outputs], key=subkey)
-
-    targets = mx.matmul(inputs, true_weights) + noise
-
-    dataset = mx.concatenate([inputs, targets], axis=1)
-    if is_show_all:
-        print("weights")
-        print_list(true_weights.tolist())
-        print("noise")
-        print_list(noise.tolist())
+    config = {
+        "n_samples": args.n_samples,
+        "n_features": args.n_features,
+        "n_outputs": args.n_outputs,
+        "noise_scale": args.mean
+    }
+    dataset, aux = make_regression_dataset(config, mx.random.key(seed))
+    if args.all:
+        print_dict(aux)
     print_list(dataset.tolist())
 
 # TODO:
@@ -118,11 +143,13 @@ def main() -> None:
 # - [x] feat: add verbose mode
 # - [x] feat: rename verbose to all
 # - [ ] feat: add `xyn reg` subcommand
-# - [ ] feat: add sum dataset
+# - [x] feat: add sum dataset
+# - [ ] fix: have sum dataset be exact sum (I think matmul is breaking it)
+# - [ ] feat: add sum dataset for integral valued inputs
 # - [ ] feat: add real-valued binary classification dataset
 # - [ ] feat: add header display option
 # - [ ] fix: fix scientific notation displaying
-# - [ ] fix: fix emacs/magit git setup
+# - [x] fix: fix emacs/magit git setup
 # - [x] feat: improve readme by showing how to use `xyn` with other unix commands
 # - [ ] feat: Add examples to `-h` help
 # - [ ] feat: improve typechecking of ndims
