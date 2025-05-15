@@ -36,23 +36,9 @@ def show_list_by(delim: str, xs: list):
 # %%
 show_list = partial(show_list_by, " ")
 
-
 # %%
-def print_list(xs):
-    print(show_list(xs))
-
-# %%
-def generic_print(x):
-    if isinstance(x, list):
-        print_list(x)
-    else:
-        print(x)
-
-# %%
-def print_dict(mp):
-   for k, v in mp.items():
-       print(k)
-       generic_print(v)
+def show_dict(mp):
+    return "\n".join(k + "\n" + v for k, v in mp.items())
 
 # %%
 def make_regression_dataset(config, key):
@@ -135,8 +121,8 @@ def main() -> None:
     }
     dataset, aux = make_regression_dataset(config, mx.random.key(seed))
     if args.all:
-        print_dict(aux)
-    print_list(dataset.tolist())
+        print(show_dict({k: show_list(v) if isinstance(v, list) else v for k, v in aux.items()}))
+    print(show_list(dataset.tolist()))
 
 # TODO:
 # - [x] feat: remove delim argument
