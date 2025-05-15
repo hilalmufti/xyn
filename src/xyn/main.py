@@ -7,15 +7,17 @@ import mlx.core as mx
 
 # %%
 LOGO = [
-        " _  _  _  _  __ _ ",
-        "( \\/ )( \\/ )(  ( \\",
-        " )  (  )  / /    /",
-        "(_/\\_)(__/  \\_)__)"
-    ]
+    " _  _  _  _  __ _ ",
+    "( \\/ )( \\/ )(  ( \\",
+    " )  (  )  / /    /",
+    "(_/\\_)(__/  \\_)__)",
+]
+
 
 # %%
 def unlines(xs):
     return "\n".join(xs)
+
 
 # %%
 def ndims(xs):
@@ -26,6 +28,7 @@ def ndims(xs):
             return 1
         case [x, *xs] if isinstance(x, list):
             return 1 + ndims(x)
+
 
 # %%
 def show_list_by(delim: str, xs: list):
@@ -39,12 +42,15 @@ def show_list_by(delim: str, xs: list):
     else:
         raise Exception(f"Expected 1 or 2 dimensions, found {n}")
 
+
 # %%
 show_list = partial(show_list_by, " ")
+
 
 # %%
 def show_dict(mp):
     return unlines(k + "\n" + v for k, v in mp.items())
+
 
 # %%
 def make_regression_dataset(config, key):
@@ -64,9 +70,9 @@ def make_regression_dataset(config, key):
 
     targets = mx.matmul(inputs, true_weights) + noise
 
-    aux = {'weights': true_weights.tolist(),
-           'noise': noise.tolist()}
+    aux = {"weights": true_weights.tolist(), "noise": noise.tolist()}
     return mx.concatenate([inputs, targets], axis=1), aux
+
 
 # %%
 def make_sum_dataset(config, key):
@@ -75,7 +81,7 @@ def make_sum_dataset(config, key):
     n_outputs = config["n_outputs"]
     noise_scale = config["noise_scale"]
 
-    assert n_outputs == 1, "sum dataset must have exactly one output"
+    assert n_outputs == 1, "sum dataset must have exactly 1 output"
 
     true_weights = mx.ones([n_features, n_outputs])
 
@@ -87,22 +93,32 @@ def make_sum_dataset(config, key):
 
     targets = mx.matmul(inputs, true_weights) + noise
 
-    aux = {'weights': true_weights.tolist(),
-           'noise': noise.tolist()}
+    aux = {"weights": true_weights.tolist(), "noise": noise.tolist()}
     return mx.concatenate([inputs, targets], axis=1), aux
+
 
 # %%
 def make_mixture_dataset(config, key):
     n_samples = config["n_samples"]
+    n_features = config["n_features"]
+    n_outputs = config["n_outputs"]
     weights = mx.array(config["weights"])
     means = mx.array(config["means"])
     covs = mx.array(config["covs"])
+
+    assert n_features == 2, "mixture dataset must have exactly 2 features"
+    assert n_outputs == 1, "mixture dataset must have exactly 1 output"
 
     key, subkey = mx.random.split(key)
     targets = mx.random.categorical(weights, num_samples=n_samples, key=key).tolist()
 
     key, *subkeys = mx.random.split(key, n_samples + 1)
-    inputs = mx.array([mx.random.multivariate_normal(means[i], covs[i], key=subkey, stream=mx.cpu) for i, subkey in zip(targets, subkeys)])
+    inputs = mx.array(
+        [
+            mx.random.multivariate_normal(means[i], covs[i], key=subkey, stream=mx.cpu)
+            for i, subkey in zip(targets, subkeys)
+        ]
+    )
     targets = mx.array(targets)[:, None]
 
     aux = {
@@ -112,76 +128,141 @@ def make_mixture_dataset(config, key):
     }
     return mx.concatenate([inputs, targets], axis=1), aux
 
+
 # %%
 
 # ds = load_dataset("ylecun/mnist")
 
-def make_mnist_dataset(config, key):
-    ...
+
+def make_mnist_dataset(config, key): ...
+
 
 # %%
 def main() -> None:
-    parser = ArgumentParser(prog="xyn",
-                            description="xyn generates xynthetic data",
-                            epilog="\n".join(LOGO),
-                            formatter_class=RawDescriptionHelpFormatter)
+    parser = ArgumentParser(
+        prog="xyn",
+        description="xyn generates xynthetic data",
+        epilog="\n".join(LOGO),
+        formatter_class=RawDescriptionHelpFormatter,
+    )
     subparsers = parser.add_subparsers(required=True)
 
-    parser_regression = subparsers.add_parser('reg')
-    parser_regression.add_argument("-s", "--seed",
-                        type=int,
-                        default=546,
-                        help="Use the given random seed to generate data")
-    parser_regression.add_argument("-n", "--noise",
-                        type=float,
-                        default=1e-2,
-                        help="Amount of gaussian noise used to generate data")
-    parser_regression.add_argument("-a", "--all",
-                        action='store_true',
-                        help="Show all the intermediate data structures used to \
-                        generate the dataset")
-    parser_regression.add_argument("n_samples", type=int, help="Number of total data samples to generate")
-    parser_regression.add_argument("n_features", type=int, help="Number of input features \
-                        to generate data")
-    parser_regression.add_argument("n_outputs", type=int, help="Number of output variables for each data sample")
+    parser_regression = subparsers.add_parser("reg")
+    parser_regression.add_argument(
+        "-s",
+        "--seed",
+        type=int,
+        default=546,
+        help="Use the given random seed to generate data",
+    )
+    parser_regression.add_argument(
+        "-n",
+        "--noise",
+        type=float,
+        default=1e-2,
+        help="Amount of gaussian noise used to generate data",
+    )
+    parser_regression.add_argument(
+        "-a",
+        "--all",
+        action="store_true",
+        help="Show all the intermediate data structures used to \
+                        generate the dataset",
+    )
+    parser_regression.add_argument(
+        "n_samples", type=int, help="Number of total data samples to generate"
+    )
+    parser_regression.add_argument(
+        "n_features",
+        type=int,
+        help="Number of input features \
+                        to generate data",
+    )
+    parser_regression.add_argument(
+        "n_outputs", type=int, help="Number of output variables for each data sample"
+    )
     parser_regression.set_defaults(func=make_regression_dataset)
 
-    parser_sum = subparsers.add_parser('sum')
-    parser_sum.add_argument("-s", "--seed",
-                        type=int,
-                        default=546,
-                        help="Use the given random seed to generate data")
-    parser_sum.add_argument("-n", "--noise",
-                        type=float,
-                        default=1e-2,
-                        help="Amount of gaussian noise used to generate data")
-    parser_sum.add_argument("-a", "--all",
-                        action='store_true',
-                        help="Show all the intermediate data structures used to \
-                        generate the dataset")
-    parser_sum.add_argument("n_samples", type=int, help="Number of total data samples to generate")
-    parser_sum.add_argument("n_features", type=int, help="Number of input features \
-                        to generate data")
-    parser_sum.add_argument("n_outputs", type=int, help="Number of output variables for each data sample")
+    parser_sum = subparsers.add_parser("sum")
+    parser_sum.add_argument(
+        "-s",
+        "--seed",
+        type=int,
+        default=546,
+        help="Use the given random seed to generate data",
+    )
+    parser_sum.add_argument(
+        "-n",
+        "--noise",
+        type=float,
+        default=0,
+        help="Amount of gaussian noise used to generate data",
+    )
+    parser_sum.add_argument(
+        "-a",
+        "--all",
+        action="store_true",
+        help="Show all the intermediate data structures used to \
+                        generate the dataset",
+    )
+    parser_sum.add_argument(
+        "n_samples", type=int, help="Number of total data samples to generate"
+    )
+    parser_sum.add_argument(
+        "n_features",
+        type=int,
+        help="Number of input features \
+                        to generate data",
+    )
+    parser_sum.add_argument(
+        "n_outputs",
+        type=int,
+        default=1,
+        nargs='?',
+        help="Number of output variables for each data sample",
+    )
     parser_sum.set_defaults(func=make_sum_dataset)
 
-    parser_mixture = subparsers.add_parser('mix')
-    parser_mixture.add_argument("-s", "--seed",
-                                type=int,
-                                default=546,
-                                help="Use the given random seed to generate data")
-    parser_mixture.add_argument("-n", "--noise",
-                        type=float,
-                        default=1e-2,
-                        help="Amount of gaussian noise used to generate data")
-    parser_mixture.add_argument("-a", "--all",
-                                action="store_true",
-                                help="Show all the intermediate data structures used to \
-                                generate the dataset")
-    parser_mixture.add_argument("n_samples", type=int, help = "Number of total data samples to generate")
-    parser_mixture.add_argument("n_features", type=int, help="Number of input features \
-                        to generate data")
-    parser_mixture.add_argument("n_outputs", type=int, help="Number of output variables for each data sample")
+    parser_mixture = subparsers.add_parser("mix")
+    parser_mixture.add_argument(
+        "-s",
+        "--seed",
+        type=int,
+        default=546,
+        help="Use the given random seed to generate data",
+    )
+    parser_mixture.add_argument(
+        "-n",
+        "--noise",
+        type=float,
+        default=0,
+        help="Amount of gaussian noise used to generate data",
+    )
+    parser_mixture.add_argument(
+        "-a",
+        "--all",
+        action="store_true",
+        help="Show all the intermediate data structures used to \
+                                generate the dataset",
+    )
+    parser_mixture.add_argument(
+        "n_samples", type=int, help="Number of total data samples to generate"
+    )
+    parser_mixture.add_argument(
+        "n_features",
+        type=int,
+        default=2,
+        nargs='?',
+        help="Number of input features \
+                        to generate data",
+    )
+    parser_mixture.add_argument(
+        "n_outputs",
+        type=int,
+        default=1,
+        nargs='?',
+        help="Number of output variables for each data sample",
+    )
     parser_mixture.set_defaults(func=make_mixture_dataset)
 
     args = parser.parse_args()
@@ -192,17 +273,16 @@ def main() -> None:
         "n_samples": args.n_samples,
         "n_features": args.n_features,
         "n_outputs": args.n_outputs,
-        "noise_scale": args.mean,
+        "noise_scale": args.noise,
         "weights": [0.3, 0.4, 0.3],
         "means": [[-3, -2], [0, 0], [3, 2]],
-        "covs": [[[1, 0.5], [0.5, 1]],
-                [[1, -0.7], [-0.7, 1]],
-                [[1, 0.3], [0.3, 1]]]
+        "covs": [[[1, 0.5], [0.5, 1]], [[1, -0.7], [-0.7, 1]], [[1, 0.3], [0.3, 1]]],
     }
     dataset, aux = args.func(config, mx.random.key(seed))
     if args.all:
         print(show_dict({k: show_list(v) for k, v in aux.items()}))
     print(show_list(dataset.tolist()))
+
 
 # TODO:
 # - [x] enhancement: remove delim argument
@@ -216,6 +296,7 @@ def main() -> None:
 # - [ ] fix: sum dataset be exact sum (I think matmul is breaking it), but is inexact
 # - [x] feat: implement `xyn sum` subcommand
 # - [x] feat: implement gaussian mixture dataset
+# - [ ] feat: implement simple dataset combinators
 # - [ ] feat: implement multiple input variables in mixture dataset
 # - [ ] feat: implement convariance printing in mixture dataset
 # - [ ] enhance: refactor redundant parser arguments for mixture dataset
