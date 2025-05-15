@@ -95,23 +95,48 @@ def main() -> None:
                             description="xyn generates xynthetic data",
                             epilog="\n".join(LOGO),
                             formatter_class=RawDescriptionHelpFormatter)
-    parser.add_argument("-s", "--seed",
+    subparsers = parser.add_subparsers(required=True)
+
+    parser_regression = subparsers.add_parser('reg')
+    parser_regression.add_argument("-s", "--seed",
                         type=int,
                         default=546,
                         help="Use the given random seed to generate data")
-    parser.add_argument("-m", "--mean",
+    parser_regression.add_argument("-m", "--mean",
                         type=float,
                         default=1e-2,
                         help="Use the given mean to generate gaussian noise used \
                         to generate data")
-    parser.add_argument("-a", "--all",
+    parser_regression.add_argument("-a", "--all",
                         action='store_true',
                         help="Show all the intermediate data structures used to \
                         generate the dataset")
-    parser.add_argument("n_samples", type=int, help="Number of total data samples to generate")
-    parser.add_argument("n_features", type=int, help="Number of input features \
+    parser_regression.add_argument("n_samples", type=int, help="Number of total data samples to generate")
+    parser_regression.add_argument("n_features", type=int, help="Number of input features \
                         to generate data")
-    parser.add_argument("n_outputs", type=int, help="Number of output variables for each data sample")
+    parser_regression.add_argument("n_outputs", type=int, help="Number of output variables for each data sample")
+    parser_regression.set_defaults(func=make_regression_dataset)
+
+
+    parser_sum = subparsers.add_parser('sum')
+    parser_sum.add_argument("-s", "--seed",
+                        type=int,
+                        default=546,
+                        help="Use the given random seed to generate data")
+    parser_sum.add_argument("-m", "--mean",
+                        type=float,
+                        default=1e-2,
+                        help="Use the given mean to generate gaussian noise used \
+                        to generate data")
+    parser_sum.add_argument("-a", "--all",
+                        action='store_true',
+                        help="Show all the intermediate data structures used to \
+                        generate the dataset")
+    parser_sum.add_argument("n_samples", type=int, help="Number of total data samples to generate")
+    parser_sum.add_argument("n_features", type=int, help="Number of input features \
+                        to generate data")
+    parser_sum.add_argument("n_outputs", type=int, help="Number of output variables for each data sample")
+    parser_sum.set_defaults(func=make_sum_dataset)
 
     args = parser.parse_args()
 
@@ -123,7 +148,7 @@ def main() -> None:
         "n_outputs": args.n_outputs,
         "noise_scale": args.mean
     }
-    dataset, aux = make_sum_dataset(config, mx.random.key(seed))
+    dataset, aux = args.func(config, mx.random.key(seed))
     if args.all:
         print(show_dict({k: show_list(v) for k, v in aux.items()}))
     print(show_list(dataset.tolist()))
@@ -135,7 +160,7 @@ def main() -> None:
 # - [ ] feat: add `xyn reg` subcommand
 # - [x] feat: add sum dataset
 # - [ ] fix: have sum dataset be exact sum (I think matmul is breaking it)
-# - [ ] feat: add `xyn sum` subcommand
+# - [x] feat: add `xyn sum` subcommand
 # - [ ] feat: add sum dataset for integral valued inputs
 # - [ ] feat: add real-valued binary classification dataset
 # - [ ] feat: add header display option
@@ -151,4 +176,5 @@ def main() -> None:
 # - [ ] feat: binary classification
 # - [ ] feat: multi-dimensional classification
 # - [x] feat: train/test data (done by datasplit program)
-# - [ ] refactor: refactor make_sum_dataset, make_regression_dataset
+# - [ ] enhancement: refactor make_regression_dataset, make_sum_dataset
+# - [ ] enhancement: refactor parser_regression, parser_sum repeated code
