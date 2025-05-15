@@ -1,8 +1,9 @@
 # %%
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from functools import partial
+
+from datasets import load_dataset
 import mlx.core as mx
-from toolz import frequencies
 
 # %%
 LOGO = [
@@ -112,6 +113,13 @@ def make_mixture_dataset(config, key):
     return mx.concatenate([inputs, targets], axis=1), aux
 
 # %%
+
+# ds = load_dataset("ylecun/mnist")
+
+def make_mnist_dataset(config, key):
+    ...
+
+# %%
 def main() -> None:
     parser = ArgumentParser(prog="xyn",
                             description="xyn generates xynthetic data",
@@ -124,11 +132,10 @@ def main() -> None:
                         type=int,
                         default=546,
                         help="Use the given random seed to generate data")
-    parser_regression.add_argument("-m", "--mean",
+    parser_regression.add_argument("-n", "--noise",
                         type=float,
                         default=1e-2,
-                        help="Use the given mean to generate gaussian noise used \
-                        to generate data")
+                        help="Amount of gaussian noise used to generate data")
     parser_regression.add_argument("-a", "--all",
                         action='store_true',
                         help="Show all the intermediate data structures used to \
@@ -144,11 +151,10 @@ def main() -> None:
                         type=int,
                         default=546,
                         help="Use the given random seed to generate data")
-    parser_sum.add_argument("-m", "--mean",
+    parser_sum.add_argument("-n", "--noise",
                         type=float,
                         default=1e-2,
-                        help="Use the given mean to generate gaussian noise used \
-                        to generate data")
+                        help="Amount of gaussian noise used to generate data")
     parser_sum.add_argument("-a", "--all",
                         action='store_true',
                         help="Show all the intermediate data structures used to \
@@ -164,11 +170,10 @@ def main() -> None:
                                 type=int,
                                 default=546,
                                 help="Use the given random seed to generate data")
-    parser_mixture.add_argument("-m", "--mean",
+    parser_mixture.add_argument("-n", "--noise",
                         type=float,
                         default=1e-2,
-                        help="Use the given mean to generate gaussian noise used \
-                        to generate data")
+                        help="Amount of gaussian noise used to generate data")
     parser_mixture.add_argument("-a", "--all",
                                 action="store_true",
                                 help="Show all the intermediate data structures used to \
