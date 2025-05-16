@@ -1,6 +1,7 @@
 # %%
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from functools import partial
+from itertools import product
 
 from datasets import load_dataset
 import mlx.core as mx
@@ -131,15 +132,46 @@ def make_mixture_dataset(config, key):
     }
     return mx.concatenate([inputs, targets], axis=1), aux
 
+# %%
+def shape_range(shape):
+    ...
+
+print(shape_range([3])) # => [0, 1, 2]
+print(shape_range([3, 2])) # => [[0, 0], [0, 1], [1, 0], [1, 1], [2, 0], [2, 1]]
 
 # %%
-def show_header(n_features, n_outputs):
-    return unwords([f"x{i}" for i in range(1, n_features + 1)] + [f"y{i}" for i in range(1, n_outputs + 1)])
+def show_ix(ix):
+    match ix:
+        case int(i):
+            return str(i)
+        case (int(i), int(j)) | [int(i), int(j)]:
+            return f"{i}-{j}"
+        case _:
+            raise NotImplementedError("show_ix  can only be applied to integers and pairs of integers")
 
 # %%
+def show_header(feat_ixs, out_ixs):
+    return unwords(["x" + show_ix(i) for i in feat_ixs] + ["y" + show_ix(i) for i in out_ixs])
+
+# %%
+
+
+config = {
+    'n_sample': 60_000,
+    'n_features': 768,
+    'n_outputs': 1,
+    'noise_scale': 0,
+    'weights': None,
+}
+
+seed = 546
+key = mx.random.key(seed)
 
 def make_mnist_dataset(config, key):
-    ...
+    ds = load_dataset('ylecun/mnist')['train']
+    return ds[0]['image']
+
+make_mnist_dataset(config, key)
 
 # %%
 def main() -> None:
@@ -183,7 +215,11 @@ def main() -> None:
                         to generate data",
     )
     parser_regression.add_argument(
-        "n_outputs", type=int, help="Number of output variables for each data sample"
+        "n_outputs",
+        type=int,
+        default=1,
+        nargs = '?',
+        help="Number of output variables for each data sample"
     )
     parser_regression.set_defaults(func=make_regression_dataset)
 
@@ -285,7 +321,7 @@ def main() -> None:
     dataset, aux = args.func(config, mx.random.key(seed))
     if args.all:
         print(show_dict({k: show_list(v) for k, v in aux.items()}))
-    print(show_header(args.n_features, args.n_outputs))
+    print(show_header(range(1, args.n_features + 1), range(1, args.n_outputs + 1)))
     print(show_list(dataset.tolist()))
 
 
@@ -298,9 +334,11 @@ def main() -> None:
 # - [x] enhance: remove n_outputs option for `xyn sum` subcommand
 # - [x] feat: implement `xyn reg` subcommand
 # - [x] feat: implement sum dataset
+# - [ ] feat: implement header support for multidimensional data (x1-j)
 # - [ ] fix: sum dataset be exact sum (I think matmul is breaking it), but is inexact
 # - [x] feat: implement `xyn sum` subcommand
 # - [x] feat: implement gaussian mixture dataset
+# - [ ] feat: implement mnist test set
 # - [ ] feat: implement simple dataset combinators
 # - [ ] feat: implement multiple input variables in mixture dataset
 # - [ ] feat: implement covariance printing in mixture dataset
