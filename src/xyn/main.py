@@ -1,10 +1,27 @@
 # %%
+import os
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from functools import partial
-from itertools import product
 
-from datasets import load_dataset
 import mlx.core as mx
+
+while 'src' in os.getcwd():
+    os.chdir('..')
+
+# %%
+MNIST_SPEC = {
+    'train_inputs_file': 'train-images-idx3-ubyte.gz',
+    'train_targets_file': 'train-labels-idx1-ubyte.gz',
+    'test_inputs_file': 't10k-images-idx3-ubyte.gz',
+    'test_targets_file': 't10k-labels-idx1-ubyte.gz',
+    'n_train': 60_000,
+    'n_test': 10_000,
+    'origin': 'url',
+    'extra': {
+        'url': 'https://storage.googleapis.com/cvdf-datasets/mnist/'
+    },
+    'type': 'dataspec'
+}
 
 # %%
 LOGO = [
@@ -14,13 +31,83 @@ LOGO = [
     "(_/\\_)(__/  \\_)__)",
 ]
 
+# %%
+def make_dataspec(train_inputs_file, train_targets_file, test_inputs_file,
+                  test_targets_file, n_train, n_test, origin, extra):
+    match origin:
+        case 'url':
+            assert 'url' in extra
+            return {
+                'train_inputs_file': train_inputs_file,
+                'train_targets_file': train_targets_file,
+                'test_inputs_file': test_inputs_file,
+                'test_targets_file': test_targets_file,
+                'n_train': n_train,
+                'n_test': n_test,
+                'origin': origin,
+                'extra': extra,
+                'type': 'dataspec'
+            }
+        case 'disk':
+            raise NotImplementedError()
+        case 'synthetic':
+            raise NotImplementedError()
+
+MNIST_SPEC = make_dataspec(
+    train_inputs_file='train-images-idx3-ubyte.gz',
+    train_targets_file='train-labels-idx1-ubyte.gz',
+    test_inputs_file='t10k-images-idx3-ubyte.gz',
+    test_targets_file='t10k-labels-idx1-ubyte.gz',
+    n_train=60_000,
+    n_test=10_000,
+    origin='url',
+    extra={
+        'url': 'https://storage.googleapis.com/cvdf-datasets/mnist/'
+    }
+)
+
 
 # %%
-def unlines(xs):
+def dataspec_train_inputs_file(spec):
+    return spec['train_inputs_file']
+
+def dataspec_train_targets_file(spec):
+    return spec['train_targets_file']
+
+def dataspec_test_inputs_file(spec):
+    return spec['test_inputs_file']
+
+def dataspec_test_targets_file(spec):
+    return spec['test_targets_file']
+
+def dataspec_n_train(spec):
+    return spec['n_train']
+
+def dataspec_n_test(spec):
+    return spec['n_test']
+
+def dataspec_origin(spec):
+    return spec['origin']
+
+def dataspec_extra(spec):
+    return spec['extra']
+
+def dataspec_is_url(spec):
+    return dataspec_origin(spec) == 'url'
+
+# %%
+def dataspec_fetch(spec, dest):
+    assert dataspec_is_url(spec), "dataspec must be a url spec"
+    return []
+
+dataspec_fetch(MNIST_SPEC, 'data/')
+
+# %%
+def unlines(xs: list[str]) -> str:
     return "\n".join(xs)
 
 # %%
-def unwords(xs):
+def unwords(xs: list[str]) -> int:
     return " ".join(xs)
 
 # %%
@@ -133,13 +220,6 @@ def make_mixture_dataset(config, key):
     return mx.concatenate([inputs, targets], axis=1), aux
 
 # %%
-def shape_range(shape):
-    ...
-
-print(shape_range([3])) # => [0, 1, 2]
-print(shape_range([3, 2])) # => [[0, 0], [0, 1], [1, 0], [1, 1], [2, 0], [2, 1]]
-
-# %%
 def show_ix(ix):
     match ix:
         case int(i):
@@ -147,15 +227,13 @@ def show_ix(ix):
         case (int(i), int(j)) | [int(i), int(j)]:
             return f"{i}-{j}"
         case _:
-            raise NotImplementedError("show_ix  can only be applied to integers and pairs of integers")
+            raise NotImplementedError("show_ix can only be applied to integers and pairs of integers")
 
 # %%
 def show_header(feat_ixs, out_ixs):
     return unwords(["x" + show_ix(i) for i in feat_ixs] + ["y" + show_ix(i) for i in out_ixs])
 
 # %%
-
-
 config = {
     'n_sample': 60_000,
     'n_features': 768,
