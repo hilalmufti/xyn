@@ -234,24 +234,6 @@ def show_header(feat_ixs, out_ixs):
     return unwords(["x" + show_ix(i) for i in feat_ixs] + ["y" + show_ix(i) for i in out_ixs])
 
 # %%
-config = {
-    'n_sample': 60_000,
-    'n_features': 768,
-    'n_outputs': 1,
-    'noise_scale': 0,
-    'weights': None,
-}
-
-seed = 546
-key = mx.random.key(seed)
-
-def make_mnist_dataset(config, key):
-    ds = load_dataset('ylecun/mnist')['train']
-    return ds[0]['image']
-
-make_mnist_dataset(config, key)
-
-# %%
 def main() -> None:
     parser = ArgumentParser(
         prog="xyn",
