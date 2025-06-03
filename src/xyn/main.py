@@ -1,5 +1,7 @@
 # %%
 import os
+import stat
+import urllib.request
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from functools import partial
 
@@ -9,19 +11,8 @@ while 'src' in os.getcwd():
     os.chdir('..')
 
 # %%
-MNIST_SPEC = {
-    'train_inputs_file': 'train-images-idx3-ubyte.gz',
-    'train_targets_file': 'train-labels-idx1-ubyte.gz',
-    'test_inputs_file': 't10k-images-idx3-ubyte.gz',
-    'test_targets_file': 't10k-labels-idx1-ubyte.gz',
-    'n_train': 60_000,
-    'n_test': 10_000,
-    'origin': 'url',
-    'extra': {
-        'url': 'https://storage.googleapis.com/cvdf-datasets/mnist/'
-    },
-    'type': 'dataspec'
-}
+DataSpec = dict[str, any]
+Logo = list[str]
 
 # %%
 LOGO = [
@@ -32,77 +23,6 @@ LOGO = [
 ]
 
 # %%
-def make_dataspec(train_inputs_file, train_targets_file, test_inputs_file,
-                  test_targets_file, n_train, n_test, origin, extra):
-    match origin:
-        case 'url':
-            assert 'url' in extra
-            return {
-                'train_inputs_file': train_inputs_file,
-                'train_targets_file': train_targets_file,
-                'test_inputs_file': test_inputs_file,
-                'test_targets_file': test_targets_file,
-                'n_train': n_train,
-                'n_test': n_test,
-                'origin': origin,
-                'extra': extra,
-                'type': 'dataspec'
-            }
-        case 'disk':
-            raise NotImplementedError()
-        case 'synthetic':
-            raise NotImplementedError()
-
-MNIST_SPEC = make_dataspec(
-    train_inputs_file='train-images-idx3-ubyte.gz',
-    train_targets_file='train-labels-idx1-ubyte.gz',
-    test_inputs_file='t10k-images-idx3-ubyte.gz',
-    test_targets_file='t10k-labels-idx1-ubyte.gz',
-    n_train=60_000,
-    n_test=10_000,
-    origin='url',
-    extra={
-        'url': 'https://storage.googleapis.com/cvdf-datasets/mnist/'
-    }
-)
-
-
-# %%
-def dataspec_train_inputs_file(spec):
-    return spec['train_inputs_file']
-
-def dataspec_train_targets_file(spec):
-    return spec['train_targets_file']
-
-def dataspec_test_inputs_file(spec):
-    return spec['test_inputs_file']
-
-def dataspec_test_targets_file(spec):
-    return spec['test_targets_file']
-
-def dataspec_n_train(spec):
-    return spec['n_train']
-
-def dataspec_n_test(spec):
-    return spec['n_test']
-
-def dataspec_origin(spec):
-    return spec['origin']
-
-def dataspec_extra(spec):
-    return spec['extra']
-
-def dataspec_is_url(spec):
-    return dataspec_origin(spec) == 'url'
-
-# %%
-def dataspec_fetch(spec, dest):
-    assert dataspec_is_url(spec), "dataspec must be a url spec"
-    return []
-
-dataspec_fetch(MNIST_SPEC, 'data/')
-
-# %%
 def unlines(xs: list[str]) -> str:
     return "\n".join(xs)
 
@@ -111,7 +31,7 @@ def unwords(xs: list[str]) -> int:
     return " ".join(xs)
 
 # %%
-def ndims(xs):
+def ndims(xs) -> int:
     match xs:
         case []:
             return 1
@@ -139,9 +59,120 @@ show_list = partial(show_list_by, " ")
 
 
 # %%
-def show_dict(mp):
-    return unlines(k + "\n" + v for k, v in mp.items())
+# TODO: make recursive
+def show_dict_by(delim: str, mp):
+    return unlines(str(k) + delim + str(v) for k, v in mp.items())
 
+show_dict = partial(show_dict_by, "\n")
+
+# %%
+def show_bits(x: int) -> str:
+    return format(x, 'b')
+
+# %%
+def show_logo(l: Logo) -> str:
+    return unlines(l)
+
+def print_logo(l: Logo):
+    print(show_logo(l))
+
+# %%
+#  DataSpec constructor
+def make_dataspec(train_inputs_file, train_targets_file, test_inputs_file,
+                  test_targets_file, n_train, n_test, input_shape, input_size,
+                  origin, extra) -> DataSpec:
+    match origin:
+        case 'url':
+            assert 'url' in extra
+            out = {
+                'train_inputs_file': train_inputs_file,
+                'train_targets_file': train_targets_file,
+                'test_inputs_file': test_inputs_file,
+                'test_targets_file': test_targets_file,
+                'n_train': n_train,
+                'n_test': n_test,
+                'input_shape': input_shape,
+                'input_size': input_size,
+                'origin': origin,
+                'extra': extra,
+                'type': 'dataspec'
+            }
+            return out
+        case 'disk':
+            raise NotImplementedError()
+        case 'synthetic':
+            raise NotImplementedError()
+
+MNIST_SPEC = make_dataspec(
+    train_inputs_file='train-images-idx3-ubyte.gz',
+    train_targets_file='train-labels-idx1-ubyte.gz',
+    test_inputs_file='t10k-images-idx3-ubyte.gz',
+    test_targets_file='t10k-labels-idx1-ubyte.gz',
+    n_train=60_000,
+    n_test=10_000,
+    input_shape=[28, 28],
+    input_size = 28 * 28,
+    origin='url',
+    extra={
+        'url': 'https://storage.googleapis.com/cvdf-datasets/mnist/'
+    }
+)
+
+# %%
+def dataspec_train_inputs_file(spec):
+    return spec['train_inputs_file']
+
+def dataspec_train_targets_file(spec):
+    return spec['train_targets_file']
+
+def dataspec_test_inputs_file(spec):
+    return spec['test_inputs_file']
+
+def dataspec_test_targets_file(spec):
+    return spec['test_targets_file']
+
+def dataspec_n_train(spec):
+    return spec['n_train']
+
+def dataspec_n_test(spec):
+    return spec['n_test']
+
+def dataspec_input_shape(spec):
+    return spec['input_shape']
+
+def dataspec_input_size(spec):
+    return spec['input_size']
+
+def dataspec_origin(spec):
+    return spec['origin']
+
+def dataspec_extra(spec):
+    return spec['extra']
+
+def dataspec_is_url(spec):
+    return dataspec_origin(spec) == 'url'
+
+def dataspec_url(spec):
+    assert dataspec_is_url(spec), "dataspec must be a url spec"
+    return dataspec_extra(spec)['url']
+
+# %%
+def check_dataspec(spec: DataSpec):
+    raise NotImplementedError()
+
+# %%
+def dataspec_fetch(spec, dest):
+    assert dataspec_is_url(spec), "dataspec must be a url spec"
+    return []
+
+url = os.path.join(dataspec_url(MNIST_SPEC), dataspec_train_inputs_file(MNIST_SPEC))
+with urllib.request.urlopen(url) as f:
+    pass
+    # print(f.read(100))
+
+format(stat.S_IFSOCK, 'b')
+
+# dataspec_fetch(MNIST_SPEC, 'data/')
 
 # %%
 def make_regression_dataset(config, key):
