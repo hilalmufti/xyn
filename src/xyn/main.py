@@ -1,10 +1,13 @@
 # %%
+import gzip
 import os
 import stat
 import urllib.request
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from functools import partial
 
+import numpy as np
+import matplotlib.pyplot as plt
 import mlx.core as mx
 
 while 'src' in os.getcwd():
@@ -13,6 +16,7 @@ while 'src' in os.getcwd():
 # %%
 DataSpec = dict[str, any]
 Logo = list[str]
+HTTPRequest = dict[str, any]
 
 # %%
 LOGO = [
@@ -70,6 +74,10 @@ def show_bits(x: int) -> str:
     return format(x, 'b')
 
 # %%
+def make_http_request(meth: str, uri: str, version: str,
+                      headers: dict[str, str], body: bytes) ->
+
+# %%
 def show_logo(l: Logo) -> str:
     return unlines(l)
 
@@ -78,8 +86,15 @@ def print_logo(l: Logo):
 
 # %%
 #  DataSpec constructor
-def make_dataspec(train_inputs_file, train_targets_file, test_inputs_file,
-                  test_targets_file, n_train, n_test, input_shape, input_size,
+
+# TODO: refactor FileSpec into a separate data abstraction
+def make_dataspec(train_inputs_file, train_targets_file,
+                  test_inputs_file, test_targets_file,
+                  file_type,
+                  n_train, n_test,
+                  input_shape, input_size,
+                  target_shape, target_size,
+                  input_file_header_bufsize, target_file_header_bufsize,
                   origin, extra) -> DataSpec:
     match origin:
         case 'url':
@@ -89,13 +104,18 @@ def make_dataspec(train_inputs_file, train_targets_file, test_inputs_file,
                 'train_targets_file': train_targets_file,
                 'test_inputs_file': test_inputs_file,
                 'test_targets_file': test_targets_file,
+                'file_type': file_type,
                 'n_train': n_train,
                 'n_test': n_test,
                 'input_shape': input_shape,
                 'input_size': input_size,
+                'target_shape': target_shape,
+                'target_size': target_size,
+                'input_file_header_bufsize': input_file_header_bufsize,
+                'target_file_header_bufsize': target_file_header_bufsize,
                 'origin': origin,
                 'extra': extra,
-                'type': 'dataspec'
+                'type': 'DataSpec'
             }
             return out
         case 'disk':
@@ -108,17 +128,26 @@ MNIST_SPEC = make_dataspec(
     train_targets_file='train-labels-idx1-ubyte.gz',
     test_inputs_file='t10k-images-idx3-ubyte.gz',
     test_targets_file='t10k-labels-idx1-ubyte.gz',
+    file_type='gzip',
     n_train=60_000,
     n_test=10_000,
     input_shape=[28, 28],
     input_size = 28 * 28,
+    target_shape=[1],
+    target_size=1,
+    input_file_header_bufsize=16,
+    target_file_header_bufsize=8,
     origin='url',
     extra={
         'url': 'https://storage.googleapis.com/cvdf-datasets/mnist/'
-    }
+        }
+
 )
 
 # %%
+
+# DataSpec selectors
+
 def dataspec_train_inputs_file(spec):
     return spec['train_inputs_file']
 
@@ -143,6 +172,18 @@ def dataspec_input_shape(spec):
 def dataspec_input_size(spec):
     return spec['input_size']
 
+def dataspec_target_shape(spec):
+    return spec['target_shape']
+
+def dataspec_target_size(spec):
+    return spec['target_size']
+
+def dataspec_input_file_header_bufsize(spec):
+    return spec['input_file_header_bufsize']
+
+def dataspec_target_file_header_bufsize(spec):
+    return spec['target_file_header_bufsize']
+
 def dataspec_origin(spec):
     return spec['origin']
 
@@ -157,20 +198,48 @@ def dataspec_url(spec):
     return dataspec_extra(spec)['url']
 
 # %%
+
+# DataSpec representation invariant
 def check_dataspec(spec: DataSpec):
     raise NotImplementedError()
 
 # %%
+
+# DataSpec operations
+
 def dataspec_fetch(spec, dest):
     assert dataspec_is_url(spec), "dataspec must be a url spec"
     return []
 
-url = os.path.join(dataspec_url(MNIST_SPEC), dataspec_train_inputs_file(MNIST_SPEC))
-with urllib.request.urlopen(url) as f:
-    pass
-    # print(f.read(100))
+file_url = dataspec_url(MNIST_SPEC)
+file_path = dataspec_train_inputs_file(MNIST_SPEC)
 
-format(stat.S_IFSOCK, 'b')
+if os.path.exists(file_path):
+    os.unlink(file_path)
+url = os.path.join(file_url, file_path)
+with urllib.request.urlopen(url) as req:
+    with open(file_path, 'xb') as f:
+        f.write(req.read())
+
+# %%
+# sample_shape = dataspec_input_shape(MNIST_SPEC)
+# sample_size = dataspec_input_size(MNIST_SPEC)
+# header_bufsize = dataspec_input_file_header_bufsize(MNIST_SPEC)
+sample_shape = dataspec_target_shape(MNIST_SPEC)
+sample_size = dataspec_target_size(MNIST_SPEC)
+header_bufsize = dataspec_target_file_header_bufsize(MNIST_SPEC)
+n_samples = 5
+
+with gzip.open(file_path) as f:
+    f.read(header_bufsize)  # skip header
+    buf = f.read(sample_size * n_samples)
+    data = np.frombuffer(buf, dtype=np.uint8).astype(np.float32)
+    data = data.reshape(n_samples, *sample_shape)
+
+    if len(sample_shape) == 2:
+        image = np.asarray(data[0])
+        plt.imshow(image, cmap='gray')
+        plt.show()
 
 # dataspec_fetch(MNIST_SPEC, 'data/')
 
