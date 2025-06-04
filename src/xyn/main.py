@@ -64,18 +64,60 @@ show_list = partial(show_list_by, " ")
 
 # %%
 # TODO: make recursive
-def show_dict_by(delim: str, mp):
-    return unlines(str(k) + delim + str(v) for k, v in mp.items())
+def show_dict_by(kv_delim: str, entry_delim: str, mp):
+    return entry_delim.join(str(k) + kv_delim + str(v) for k, v in mp.items())
 
-show_dict = partial(show_dict_by, "\n")
+show_dict = partial(show_dict_by, "\n", "\n")
 
 # %%
 def show_bits(x: int) -> str:
     return format(x, 'b')
 
 # %%
+# http request constructor
 def make_http_request(meth: str, uri: str, version: str,
-                      headers: dict[str, str], body: bytes) ->
+                      headers: dict[str, str]) -> HTTPRequest:
+    return {
+        'method': meth,
+        'uri': uri,
+        'version': version,
+        'headers': headers,
+        'type': 'HTTPRequest'
+    }
+
+# req = make_http_request('GET', 'http://example.com', 'HTTP/1.1',
+#                   {'Host': 'example.com', 'User-Agent': 'xyn/0.1'})
+
+req = make_http_request('GET', '/', 'HTTP/1.1',
+                        {'Host': 'example.com', 'User-Agent': 'xyn/0.1', 'Accept': '*/*'})
+
+# %%
+def http_request_method(req: HTTPRequest) -> str:
+    return req['method']
+
+def http_request_uri(req: HTTPRequest) -> str:
+    return req['uri']
+
+def http_request_version(req: HTTPRequest) -> str:
+    return req['version']
+
+def http_request_headers(req: HTTPRequest) -> dict[str, str]:
+    return req['headers']
+
+# %%
+def show_http_request(req: HTTPRequest) -> str:
+    return (http_request_method(req) + " " + http_request_uri(req) + " " + http_request_version(req)  + "\r\n" +
+            show_dict_by(": ", "\r\n", http_request_headers(req)) + "\r\n" +
+            "\r\n")
+
+# print(show_http_request(req))
+
+show_http_request(req)
+
+# %%
+def read_http_request(s: str) -> HTTPRequest:
+    raise NotImplementedError("read_http_request is not implemented yet")
+
 
 # %%
 def show_logo(l: Logo) -> str:
