@@ -148,12 +148,13 @@ rqln = make_hrqln('GET', '/', 'HTTP/1.1')
 # HTTPHeaders constructor
 
 def make_hhdrs(hs: dict[str, any]) -> HTTPHeaders:
-    return {**{f: hhdrs_lookup_type(f)(v) for k, v in hs.items()}, 'type': 'HTTPHeaders'}
+    return {**{f: hhdrs_lookup_type(f)(v) for f, v in hs.items()}, 'type': 'HTTPHeaders'}
 
 # HTTPHeaders selectors
 
 def hhdrs_fields(hs: HTTPHeaders) -> list[str]:
-    return [k for k in hs.keys() if k != 'type']
+    return [k for k in hs.keys() if k != 'type
+']
 
 def hhdrs_lookup(hs: HTTPHeaders, field: str) -> str:
     assert field in hhdrs_fields(hs), f"key '{field}' not found in headers"
