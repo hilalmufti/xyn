@@ -384,19 +384,18 @@ def sock_recv_hhdrs(s: Socket) -> bytes:
        acc.append(sock_recvln(s))
     return b''.join(acc)
 
+def sock_recv_hrs(s: Socket) -> tuple[HTTPStatusLine, HTTPHeaders, bytes]:
+    stln = hstln_parse(sock_recvln(s).decode())
+    hdrs = hhdrs_parse(sock_recv_hhdrs(s).decode())
+    body = sock_recv(s, hhdrs_lookup(hdrs, 'Content-Length'))
+    return stln, hdrs, body
+
 with make_sock() as s:
     sock_connect(s, ("www.example.com", 80))
     sock_send(s, hrq_show(rq).encode())
 
-    s_stln = sock_recvln(s).decode()
-    s_hdrs = sock_recv_hhdrs(s).decode()
-
-    _stln = hstln_parse(s_stln)
-    _hdrs = hhdrs_parse(s_hdrs)
-
-    chunk = sock_recv(s, hhdrs_lookup(_hdrs, 'Content-Length')).decode()
-
-    print(chunk)
+    _stln, _hdrs, _body = sock_recv_hrs(s)
+    print(_body.decode())
 
 
 
