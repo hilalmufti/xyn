@@ -40,6 +40,13 @@ LOGO = [
 
 # %%
 
+HEADER_TYPES = {
+    'Content-Length': int
+}
+
+
+# %%
+
 # TODO: add type hints
 
 def last(xs: Sequence[any]) -> Sequence[any]:
@@ -140,8 +147,8 @@ rqln = make_hrqln('GET', '/', 'HTTP/1.1')
 
 # HTTPHeaders constructor
 
-def make_hhdrs(hs: dict[str, str]) -> HTTPHeaders:
-    return {**hs, 'type': 'Hhdrs'}
+def make_hhdrs(hs: dict[str, any]) -> HTTPHeaders:
+    return {**{f: hhdrs_lookup_type(f)(v) for k, v in hs.items()}, 'type': 'HTTPHeaders'}
 
 # HTTPHeaders selectors
 
@@ -151,6 +158,9 @@ def hhdrs_fields(hs: HTTPHeaders) -> list[str]:
 def hhdrs_lookup(hs: HTTPHeaders, field: str) -> str:
     assert field in hhdrs_fields(hs), f"key '{field}' not found in headers"
     return hs[field]
+
+def hhdrs_lookup_type(field: str) -> type:
+    return HEADER_TYPES.get(field, str)
 
 def hhdrs_values(hs: HTTPHeaders) -> list[str]:
     return [hhdrs_lookup(hs, f) for f in hhrds_fields(hs)]
@@ -334,7 +344,13 @@ def sock_send(s: Socket, bs: bytes):
    s.sendall(bs)
 
 def sock_recv(s: Socket, n: int) -> bytes:
-    return s.recv(n)
+    acc = b''
+    while len(acc) < n:
+        chunk = s.recv(n - len(acc))
+        if not chunk:
+            raise ConnectionError("Socket connection broken")
+        acc += chunk
+    return acc
 
 def sock_recv1(s: Socket) -> bytes:
     return sock_recv(s, 1)
@@ -370,9 +386,16 @@ def sock_recv_hhdrs(s: Socket) -> bytes:
 with make_sock() as s:
     sock_connect(s, ("www.example.com", 80))
     sock_send(s, hrq_show(rq).encode())
-    chunk = sock_recv_hhdrs(s).decode()
+
+    s_stln = sock_recvln(s).decode()
+    s_hdrs = sock_recv_hhdrs(s).decode()
+
+    _stln = hstln_parse(s_stln)
+    _hdrs = hhdrs_parse(s_hdrs)
+
+    chunk = sock_recv(s, hhdrs_lookup(_hdrs, 'Content-Length')).decode()
+
     print(chunk)
-    print(hrs_parse(chunk))
 
 
 
