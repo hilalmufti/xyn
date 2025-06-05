@@ -312,7 +312,7 @@ rs = make_hrs(stln, hdrs_rs)
 
 # TODO: add types
 @contextmanager
-def make_socket() -> Socket:
+def make_sock() -> Socket:
    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
    try:
        yield s
@@ -322,69 +322,57 @@ def make_socket() -> Socket:
 
 # Socket representation invariant
 
-def check_socket(s: Socket):
+def check_sock(s: Socket):
     raise NotImplementedError()
 
 # Socket operations
 
-def socket_connect(s: Socket, a: Address):
+def sock_connect(s: Socket, a: Address):
     s.connect(a)
 
-def socket_send(s: Socket, bs: bytes):
+def sock_send(s: Socket, bs: bytes):
    s.sendall(bs)
 
-def socket_recv(s: Socket, n: int) -> bytes:
+def sock_recv(s: Socket, n: int) -> bytes:
     return s.recv(n)
 
-def socket_recv1(s: Socket) -> bytes:
-    return socket_recv(s, 1)
+def sock_recv1(s: Socket) -> bytes:
+    return sock_recv(s, 1)
 
-def socket_recv_while(s: Socket, pred: Callable[list[bytes], bool]) -> bytes:
+def sock_recv_while(s: Socket, pred: Callable[list[bytes], bool]) -> bytes:
     acc = []
     while pred(acc):
-        acc.append(socket_recv1(s))
+        acc.append(sock_recv1(s))
     return b''.join(acc)
 
-def socket_recv_match(s: Socket, bs: list[bytes]) -> bytes:
+def sock_recv_match(s: Socket, bs: list[bytes]) -> bytes:
     assert all(len(b) == 1 for b in bs)
-    return socket_recv_while(s, lambda acc: take_last(len(bs), acc) != bs)
+    return sock_recv_while(s, lambda acc: take_last(len(bs), acc) != bs)
 
-def socket_recvln(s: Socket) -> bytes:
-    return socket_recv_match(s, [b'\n'])
+def sock_recvln(s: Socket) -> bytes:
+    return sock_recv_match(s, [b'\n'])
 
-def socket_recv_lines(s: Socket, n: int) -> list[bytes]:
+def sock_recv_lines(s: Socket, n: int) -> list[bytes]:
     acc = []
     while len(acc) < n:
-        acc.append(socket_recvln(s))
+        acc.append(sock_recvln(s))
     return acc
 
 # High-level socket operations
 
-def socket_recv_hhdrs(s: Socket) -> bytes:
+# Receive HTTP headers
+def sock_recv_hhdrs(s: Socket) -> bytes:
     acc = []
     while not acc or last(acc) != b"\r\n":
-       acc.append(socket_recvln(s))
+       acc.append(sock_recvln(s))
     return b''.join(acc)
 
-# TODO: handle body
-def socket_recv_hrs(s: Socket) -> bytes:
-   acc = []
-   acc.append(socket_recvln(s))  # read status line
-   acc.append(socket_recv_hhdrs(s))  # read headers
-   return b''.join(acc)
-
-with make_socket() as s:
-    socket_connect(s, ("www.example.com", 80))
-    socket_send(s, hrq_show(rq).encode())
-    # chunk = socket_recv_lines(s, 3)
-    chunk = socket_recv_hrs(s)
-    print(hrs_parse(chunk.decode()))
-    #chunk1 = socket_recv(s, 2048)
-    #print(type(chunk1))
-    # chunk1 = socket_recv(s, 2048).decode()
-    # print(chunk1)
-    # print("---")
-    # print(chunk2)
+with make_sock() as s:
+    sock_connect(s, ("www.example.com", 80))
+    sock_send(s, hrq_show(rq).encode())
+    chunk = sock_recv_hhdrs(s).decode()
+    print(chunk)
+    print(hrs_parse(chunk))
 
 
 
