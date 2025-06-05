@@ -5,6 +5,7 @@ import stat
 import socket
 import urllib.request
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from collections.abc import Iterable, Sequence
 from contextlib import contextmanager
 from functools import partial
 from typing import Callable
@@ -38,37 +39,37 @@ LOGO = [
 
 # %%
 
-def last(xs):
+# TODO: add type hints
+
+def last(xs: Sequence[any]) -> Sequence[any]:
     return xs[-1]
 
-# TODO: add type hints
-def take_last(n, xs):
+def take_last(n: int, xs: Sequence[any]):
     return xs[-n:]
 
-# %%
-def unlines(xs: list[str]) -> str:
+def unlines(xs: Iterable[any]) -> str:
     return "\n".join(xs)
 
-# %%
-def unwords(xs: list[str]) -> int:
+def unwords(xs: Iterable[any]) -> int:
     return " ".join(xs)
 
 # %%
-def ndims(xs) -> int:
-    match xs:
-        case []:
-            return 1
-        case [x, *xs] if not isinstance(x, list):
-            return 1
-        case [x, *xs] if isinstance(x, list):
-            return 1 + ndims(x)
-
+def list_ndims(xs: list[any]) -> int:
+    def go(xs) -> int:
+        match xs:
+            case []:
+                return 1
+            case [x, *xs] if not isinstance(x, list):
+                return 1
+            case [x, *xs] if isinstance(x, list):
+                return 1 + go(x)
+    return go(xs)
 
 # %%
 def list_show_by(delim: str, xs: list):
     assert isinstance(xs, list)
 
-    n = ndims(xs)
+    n = list_ndims(xs)
     if n == 1:
         return delim.join(map(str, xs))
     elif n == 2:
@@ -732,7 +733,7 @@ def main() -> None:
 # - [x] fix: fix emacs/magit git setup
 # - [x] feat: improve readme by showing how to use `xyn` with other unix commands
 # - [ ] enhance: Add examples to `-h` help
-# - [ ] enhance: improve typechecking of ndims
+# - [ ] enhance: improve typechecking of list_ndims
 # - [ ] enhance: improve function typechecking and precondition checking
 # - [ ] enhance: implement unit and expect tests
 # - [ ] enhance: implement property-based testing
