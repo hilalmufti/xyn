@@ -100,7 +100,7 @@ def bits_show(x: int) -> str:
 
 # HTTPRequestLine constructor
 
-def make_httpreqln(meth: str, uri: str, version: str) -> HTTPRequestLine:
+def make_hrqln(meth: str, uri: str, version: str) -> HTTPRequestLine:
     return {
         'method': meth,
         'uri': uri,
@@ -110,110 +110,110 @@ def make_httpreqln(meth: str, uri: str, version: str) -> HTTPRequestLine:
 
 # HTTPRequestLine selectors
 
-def httpreqln_method(rl: HTTPRequestLine) -> str:
+def hrqln_method(rl: HTTPRequestLine) -> str:
     return rl['method']
 
-def httpreqln_uri(rl: HTTPRequestLine) -> str:
+def hrqln_uri(rl: HTTPRequestLine) -> str:
     return rl['uri']
 
-def httpreqln_version(rl: HTTPRequestLine) -> str:
+def hrqln_version(rl: HTTPRequestLine) -> str:
     return rl['version']
 
 # HTTPRequestLine representation invariant
 
-def check_httpreqln(rl: HTTPRequestLine):
+def check_hrqln(rl: HTTPRequestLine):
     raise NotImplementedError("check_http_request_line is not implemented yet")
 
 # HTTPRequestLine operations
 
-def httpreqln_show(rl: HTTPRequestLine) -> str:
-    return httpreqln_method(rl) + " " + httpreqln_uri(rl) + " "  + httpreqln_version(rl) + "\r\n"
+def hrqln_show(rl: HTTPRequestLine) -> str:
+    return hrqln_method(rl) + " " + hrqln_uri(rl) + " "  + hrqln_version(rl) + "\r\n"
 
-def httpreqln_parse(s: str) -> HTTPRequestLine:
+def hrqln_parse(s: str) -> HTTPRequestLine:
     raise NotImplementedError("read_http_request_line is not implemented yet")
 
-req_line = make_httpreqln('GET', '/', 'HTTP/1.1')
+rqln = make_hrqln('GET', '/', 'HTTP/1.1')
 
 # %%
 
 # TODO: fix these types
 
-# # HTTPHeaders constructor
+# HTTPHeaders constructor
 
-def make_httpheaders(hs: dict[str, str]) -> HTTPHeaders:
-    return {**hs, 'type': 'HTTPHeaders'}
+def make_hhdrs(hs: dict[str, str]) -> HTTPHeaders:
+    return {**hs, 'type': 'Hhdrs'}
 
-# # HTTPHeaders selectors
+# HTTPHeaders selectors
 
-def httpheaders_fields(hs: HTTPHeaders) -> list[str]:
+def hhdrs_fields(hs: HTTPHeaders) -> list[str]:
     return [k for k in hs.keys() if k != 'type']
 
-def httpheaders_lookup(hs: HTTPHeaders, field: str) -> str:
-    assert field in httpheaders_fields(hs), f"key '{field}' not found in headers"
+def hhdrs_lookup(hs: HTTPHeaders, field: str) -> str:
+    assert field in hhdrs_fields(hs), f"key '{field}' not found in headers"
     return hs[field]
 
-def httpheaders_values(hs: HTTPHeaders) -> list[str]:
-    return [httpheaders_lookup(hs, f) for f in httpheaders_fields(hs)]
+def hhdrs_values(hs: HTTPHeaders) -> list[str]:
+    return [hhdrs_lookup(hs, f) for f in hhrds_fields(hs)]
 
-def httpheaders_items(hs: HTTPHeaders) -> list[tuple[str, str]]:
-    return [(f, httpheaders_lookup(hs, f)) for f in httpheaders_fields(hs)]
+def hhdrs_items(hs: HTTPHeaders) -> list[tuple[str, str]]:
+    return [(f, hhdrs_lookup(hs, f)) for f in hhdrs_fields(hs)]
 
-# # HTTPHeaders representation invariant
+# # Hhdrs representation invariant
 
-def check_httpheaders(hs: HTTPHeaders):
+def check_hhdrs(hs: HTTPHeaders):
     raise NotImplementedError("check_http_headers is not implemented yet")
 
-# # HTTPHeaders operations
+# # Hhdrs operations
 
-def httpheaders_show(hs: HTTPHeaders) -> str:
-    return ''.join(str(f) + ": " + str(v) + "\r\n" for f, v in httpheaders_items(hs))
+def hhdrs_show(hs: HTTPHeaders) -> str:
+    return ''.join(str(f) + ": " + str(v) + "\r\n" for f, v in hhdrs_items(hs))
 
-def httpheaders_parse(s: str) -> HTTPHeaders:
-    return make_httpheaders(dict(h.split(": ") for h in s.strip().split("\r\n")))
+def hhdrs_parse(s: str) -> HTTPHeaders:
+    return make_hhdrs(dict(h.split(": ") for h in s.strip().split("\r\n")))
 
-hs = make_httpheaders({'Host': 'example.com', 'User-Agent': 'xyn/0.1', 'Accept': '*/*'})
+hdrs = make_hhdrs({'Host': 'example.com', 'User-Agent': 'xyn/0.1', 'Accept': '*/*'})
 
 # %%
 
 # HTTPRequest constructor
 
-def make_httpreq(rl: HTTPRequestLine, hs: HTTPHeaders) -> HTTPRequest:
+def make_hrq(rqln: HTTPRequestLine, hs: HTTPHeaders) -> HTTPRequest:
     return {
-        'request_line': rl,
+        'request_line': rqln,
         'headers': hs,
         'type': 'HTTPRequest'
     }
 
 # HTTPRequest selectors
 
-def httpreq_reqln(req: HTTPRequest) -> HTTPRequestLine:
-    return req['request_line']
+def hrq_rqln(rq: HTTPRequest) -> HTTPRequestLine:
+    return rq['request_line']
 
-def httpreq_headers(req: HTTPRequest) -> HTTPHeaders:
-    return req['headers']
+def hrq_hdrs(rq: HTTPRequest) -> HTTPHeaders:
+    return rq['headers']
 
 # HTTPRequest representation invariant
 
-def check_httpreq(req: HTTPRequest):
+def check_hrq(rq: HTTPRequest):
     raise NotImplementedError("check_http_request is not implemented yet")
 
 # HTTPRequest operations
 
-def httpreq_show(req: HTTPRequest) -> str:
-    return (httpreqln_show(httpreq_reqln(req)) +
-            httpheaders_show(httpreq_headers(req)) +
+def hrq_show(rq: HTTPRequest) -> str:
+    return (hrqln_show(hrq_rqln(rq)) +
+            hhdrs_show(hrq_hdrs(rq)) +
             "\r\n")
 
-def httpreq_parse(s: str) -> HTTPRequest:
+def hrq_parse(s: str) -> HTTPRequest:
     raise NotImplementedError("read_http_request is not implemented yet")
 
-def httpreq_print(req: HTTPRequest):
-    print(httpreq_show(req))
+def hrq_print(rq: HTTPRequest):
+    print(hrq_show(rq))
 
-def httpreq_send(req: HTTPRequest) -> HTTPResponse:
+def hrq_send(req: HTTPRequest) -> HTTPResponse:
    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-req = make_httpreq(req_line, hs)
+rq = make_hrq(rqln, hdrs)
 
 # req = make_http_request('GET', 'http://example.com', 'HTTP/1.1',
 #                   {'Host': 'example.com', 'User-Agent': 'xyn/0.1'})
@@ -225,7 +225,7 @@ req = make_httpreq(req_line, hs)
 
 # HTTPStatusLine constructor
 
-def make_httpstatln(version: str, status: str, reason: Optional[str]) -> HTTPStatusLine:
+def make_hstln(version: str, status: str, reason: Optional[str]) -> HTTPStatusLine:
     return {
         'version': version,
         'status': status,
@@ -233,30 +233,78 @@ def make_httpstatln(version: str, status: str, reason: Optional[str]) -> HTTPSta
         'type': 'HTTPStatusLine'
     }
 
-def httpstatln_version(statln: HTTPStatusLine) -> str:
-    return statln['version']
+# HTTPStatusLine selectors
 
-def httpstatln_status(statln: HTTPStatusLine) -> str:
-    return statln['status']
+def hstln_version(sl: HTTPStatusLine) -> str:
+    return sl['version']
 
-def httpstatln_reason(statln: HTTPStatusLine) -> Optional[str]:
-    return statln['reason']
+def hstln_status(sl: HTTPStatusLine) -> str:
+    return sl['status']
+
+def hstln_reason(sl: HTTPStatusLine) -> Optional[str]:
+    return sl['reason']
 
 # HTTPStatusLine representation invariant
 
-def check_httpstatln(statln: HTTPStatusLine):
+def check_hstln(sl: HTTPStatusLine):
     raise NotImplementedError("check_http_status_line is not implemented yet")
 
 # HTTPStatusLine operations
 
-def httpstatln_show(statln: HTTPStatusLine) -> str:
-    return httpstatln_version(statln) + " " + httpstatln_status(statln) + " " + httpstatln_reason(statln) + "\r\n"
+def hstln_show(sl: HTTPStatusLine) -> str:
+    return hstln_version(sl) + " " + httpstatln_status(sl) + " " + httpstatln_reason(sl) + "\r\n"
 
-def httpstatln_parse(s: str) -> HTTPStatusLine:
+def hstln_parse(s: str) -> HTTPStatusLine:
     version, status, reason = s.strip().split()
-    return make_httpstatln(version, status, reason)
+    return make_hstln(version, status, reason)
 
-statln = make_httpstatln('HTTP/1.1', '200', 'OK')
+stln = make_hstln('HTTP/1.1', '200', 'OK')
+
+# %%
+
+# HTTPResponse constructor
+
+def make_hrs(stln: HTTPStatusLine, hs: HTTPHeaders) -> HTTPResponse:
+   return {
+       'status_line': stln,
+       'headers': hs,
+       'type': 'HTTPResponse'
+    }
+
+# HTTPResponse selectors
+
+def hrs_stln(rs: HTTPResponse) -> HTTPStatusLine:
+    return rs['status_line']
+
+def hrs_hdrs(rs: HTTPResponse) -> HTTPHeaders:
+    return rs['headers']
+
+# HTTPResponse representation invariant
+
+def check_hrs(rs: HTTPResponse):
+    raise NotImplementedError("check_http_response is not implemented yet")
+
+# HTTPResponse operations
+
+def hrs_show(rs: HTTPResponse) -> str:
+    return (hstln_show(hrs_stln(rs)) +
+            hhdrs_show(hrs_hdrs(rs)) +
+            "\r\n")
+
+def hrs_parse(s: str) -> HTTPResponse:
+    stln_line, hdrs_lines = s.strip().split("\r\n", 1)
+    return make_hrs(hstln_parse(stln_line), hhdrs_parse(hdrs_lines))
+
+hdrs_rs = make_hhdrs({
+    'Content-Type': 'text/html',
+    'ETag': '84238dfc8092e5d9c0dac8ef93371a07:1736799080.121134',
+    'Last-Modified': 'Mon, 13 Jan 2025 20:11:20 GMT',
+    'Cache-Control': 'max-age=1139',
+    'Date': 'Thu, 05 Jun 2025 06:48:22 GMT',
+    'Connection': 'keep-alive'
+})
+
+rs = make_hrs(stln, hdrs_rs)
 
 # %%
 
@@ -312,21 +360,25 @@ def socket_recv_lines(s: Socket, n: int) -> list[bytes]:
 
 # High-level socket operations
 
-def socket_recv_httpheaders(s: Socket) -> bytes:
+def socket_recv_hhdrs(s: Socket) -> bytes:
     acc = []
     while not acc or last(acc) != b"\r\n":
        acc.append(socket_recvln(s))
     return b''.join(acc)
 
-def socket_recv_httpresp(s: Socket):
-    raise NotImplementedError()
+# TODO: handle body
+def socket_recv_hrs(s: Socket) -> bytes:
+   acc = []
+   acc.append(socket_recvln(s))  # read status line
+   acc.append(socket_recv_hhdrs(s))  # read headers
+   return b''.join(acc)
 
 with make_socket() as s:
     socket_connect(s, ("www.example.com", 80))
-    socket_send(s, httpreq_show(req).encode())
+    socket_send(s, hrq_show(rq).encode())
     # chunk = socket_recv_lines(s, 3)
-    chunk = socket_recv_httpheaders(s)
-    print(chunk.decode())
+    chunk = socket_recv_hrs(s)
+    print(hrs_parse(chunk.decode()))
     #chunk1 = socket_recv(s, 2048)
     #print(type(chunk1))
     # chunk1 = socket_recv(s, 2048).decode()
