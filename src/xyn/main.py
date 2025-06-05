@@ -100,7 +100,7 @@ def bits_show(x: int) -> str:
 
 # HTTPRequestLine constructor
 
-def make_httpreqline(meth: str, uri: str, version: str) -> HTTPRequestLine:
+def make_httpreqln(meth: str, uri: str, version: str) -> HTTPRequestLine:
     return {
         'method': meth,
         'uri': uri,
@@ -110,29 +110,29 @@ def make_httpreqline(meth: str, uri: str, version: str) -> HTTPRequestLine:
 
 # HTTPRequestLine selectors
 
-def httpreqline_method(rl: HTTPRequestLine) -> str:
+def httpreqln_method(rl: HTTPRequestLine) -> str:
     return rl['method']
 
-def httpreqline_uri(rl: HTTPRequestLine) -> str:
+def httpreqln_uri(rl: HTTPRequestLine) -> str:
     return rl['uri']
 
-def httpreqline_version(rl: HTTPRequestLine) -> str:
+def httpreqln_version(rl: HTTPRequestLine) -> str:
     return rl['version']
 
 # HTTPRequestLine representation invariant
 
-def check_httpreqline(rl: HTTPRequestLine):
+def check_httpreqln(rl: HTTPRequestLine):
     raise NotImplementedError("check_http_request_line is not implemented yet")
 
 # HTTPRequestLine operations
 
-def httpreqline_show(rl: HTTPRequestLine) -> str:
-    return httpreqline_method(rl) + " " + httpreqline_uri(rl) + " "  + httpreqline_version(rl) + "\r\n"
+def httpreqln_show(rl: HTTPRequestLine) -> str:
+    return httpreqln_method(rl) + " " + httpreqln_uri(rl) + " "  + httpreqln_version(rl) + "\r\n"
 
-def httpreqline_parse(s: str) -> HTTPRequestLine:
+def httpreqln_parse(s: str) -> HTTPRequestLine:
     raise NotImplementedError("read_http_request_line is not implemented yet")
 
-req_line = make_httpreqline('GET', '/', 'HTTP/1.1')
+req_line = make_httpreqln('GET', '/', 'HTTP/1.1')
 
 # %%
 
@@ -186,7 +186,7 @@ def make_httpreq(rl: HTTPRequestLine, hs: HTTPHeaders) -> HTTPRequest:
 
 # HTTPRequest selectors
 
-def httpreq_reqline(req: HTTPRequest) -> HTTPRequestLine:
+def httpreq_reqln(req: HTTPRequest) -> HTTPRequestLine:
     return req['request_line']
 
 def httpreq_headers(req: HTTPRequest) -> HTTPHeaders:
@@ -200,7 +200,7 @@ def check_httpreq(req: HTTPRequest):
 # HTTPRequest operations
 
 def httpreq_show(req: HTTPRequest) -> str:
-    return (httpreqline_show(httpreq_reqline(req)) +
+    return (httpreqln_show(httpreq_reqln(req)) +
             httpheaders_show(httpreq_headers(req)) +
             "\r\n")
 
@@ -223,16 +223,40 @@ req = make_httpreq(req_line, hs)
 
 # %%
 
-def make_httpstatline(version: str, status: str, reason: Optional[str]) -> HTTPStatusLine:
+# HTTPStatusLine constructor
+
+def make_httpstatln(version: str, status: str, reason: Optional[str]) -> HTTPStatusLine:
     return {
         'version': version,
         'status': status,
-        'reason': reason
-        'type': HTTPStatusLine
+        'reason': reason,
+        'type': 'HTTPStatusLine'
     }
 
+def httpstatln_version(statln: HTTPStatusLine) -> str:
+    return statln['version']
 
-resp_line = ...
+def httpstatln_status(statln: HTTPStatusLine) -> str:
+    return statln['status']
+
+def httpstatln_reason(statln: HTTPStatusLine) -> Optional[str]:
+    return statln['reason']
+
+# HTTPStatusLine representation invariant
+
+def check_httpstatln(statln: HTTPStatusLine):
+    raise NotImplementedError("check_http_status_line is not implemented yet")
+
+# HTTPStatusLine operations
+
+def httpstatln_show(statln: HTTPStatusLine) -> str:
+    return httpstatln_version(statln) + " " + httpstatln_status(statln) + " " + httpstatln_reason(statln) + "\r\n"
+
+def httpstatln_parse(s: str) -> HTTPStatusLine:
+    version, status, reason = s.strip().split()
+    return make_httpstatln(version, status, reason)
+
+statln = make_httpstatln('HTTP/1.1', '200', 'OK')
 
 # %%
 
