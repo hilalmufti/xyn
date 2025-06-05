@@ -2,9 +2,12 @@
 import gzip
 import os
 import stat
+import socket
 import urllib.request
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from contextlib import contextmanager
 from functools import partial
+from typing import Callable
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -16,7 +19,14 @@ while 'src' in os.getcwd():
 # %%
 DataSpec = dict[str, any]
 Logo = list[str]
+Host = str
+Port = int
+Address = tuple[Host, int]
+Socket = socket.socket
+HTTPRequestLine = dict[str, any]
+HTTPHeaders = dict[str, any]
 HTTPRequest = dict[str, any]
+HTTPResponse = list[bytes]
 
 # %%
 LOGO = [
@@ -25,6 +35,15 @@ LOGO = [
     " )  (  )  / /    /",
     "(_/\\_)(__/  \\_)__)",
 ]
+
+# %%
+
+def last(xs):
+    return xs[-1]
+
+# TODO: add type hints
+def take_last(n, xs):
+    return xs[-n:]
 
 # %%
 def unlines(xs: list[str]) -> str:
@@ -46,82 +65,238 @@ def ndims(xs) -> int:
 
 
 # %%
-def show_list_by(delim: str, xs: list):
+def list_show_by(delim: str, xs: list):
     assert isinstance(xs, list)
 
     n = ndims(xs)
     if n == 1:
         return delim.join(map(str, xs))
     elif n == 2:
-        return unlines(map(lambda x: show_list_by(delim, x), xs))
+        return unlines(map(lambda x: list_show_by(delim, x), xs))
     else:
         raise Exception(f"Expected 1 or 2 dimensions, found {n}")
 
 
 # %%
-show_list = partial(show_list_by, " ")
-
+list_show = partial(list_show_by, " ")
 
 # %%
 # TODO: make recursive
-def show_dict_by(kv_delim: str, entry_delim: str, mp):
+def dict_show_by(kv_delim: str, entry_delim: str, mp):
     return entry_delim.join(str(k) + kv_delim + str(v) for k, v in mp.items())
 
-show_dict = partial(show_dict_by, "\n", "\n")
+dict_show = partial(dict_show_by, "\n", "\n")
 
 # %%
-def show_bits(x: int) -> str:
+def bits_show(x: int) -> str:
     return format(x, 'b')
 
 # %%
-# http request constructor
-def make_http_request(meth: str, uri: str, version: str,
-                      headers: dict[str, str]) -> HTTPRequest:
+
+# Socket constructor
+
+# TODO: add types
+@contextmanager
+def make_socket() -> Socket:
+   s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+   try:
+       yield s
+   finally:
+       s.shutdown(socket.SHUT_WR)
+       s.close()
+
+# Socket representation invariant
+
+def check_socket(s: Socket):
+    raise NotImplementedError()
+
+# Socket operations
+
+def socket_connect(s: Socket, a: Address):
+    s.connect(a)
+
+def socket_send(s: Socket, bs: bytes):
+   s.sendall(bs)
+
+def socket_recv(s: Socket, n: int) -> bytes:
+    return s.recv(n)
+
+def socket_recv_char(s: Socket) -> bytes:
+    return socket_recv(s, 1)
+
+def socket_recv_while(s: Socket, pred: Callable[list[bytes], bool]) -> bytes:
+    acc = []
+    while pred(acc):
+        acc.append(socket_recv_char(s))
+    return b''.join(acc)
+
+def socket_recv_match(s: Socket, bs: list[bytes]) -> bytes:
+    assert all(len(b) == 1 for b in bs)
+    return socket_recv_while(s, lambda acc: take_last(len(bs), acc) != bs)
+
+def socket_recvln(s: Socket) -> bytes:
+    return socket_recv_match(s, [b'\n'])
+
+def socket_recv_lines(s: Socket, n: int) -> list[bytes]:
+    acc = []
+    while len(acc) < n:
+        acc.append(socket_recvln(s))
+    return acc
+
+def socket_recv_httpheaders(s: Socket) -> bytes:
+    acc = []
+    while not acc or last(acc) != b"\r\n":
+       acc.append(socket_recvln(s))
+    return b''.join(acc)
+
+def socket_recv_httpresp(s: Socket):
+    raise NotImplementedError()
+
+with make_socket() as s:
+    socket_connect(s, ("www.example.com", 80))
+    socket_send(s, httpreq_show(req).encode())
+    # chunk = socket_recv_lines(s, 3)
+    chunk = socket_recv_httpheaders(s)
+    print(chunk.decode())
+    #chunk1 = socket_recv(s, 2048)
+    #print(type(chunk1))
+    # chunk1 = socket_recv(s, 2048).decode()
+    # print(chunk1)
+    # print("---")
+    # print(chunk2)
+
+
+# %%
+
+# HTTPRequestLine constructor
+
+def make_httpreqline(meth: str, uri: str, version: str) -> HTTPRequestLine:
     return {
         'method': meth,
         'uri': uri,
         'version': version,
-        'headers': headers,
+        'type': 'RequestLine'
+    }
+
+# HTTPRequestLine selectors
+
+def httpreqline_method(rl: HTTPRequestLine) -> str:
+    return rl['method']
+
+def httpreqline_uri(rl: HTTPRequestLine) -> str:
+    return rl['uri']
+
+def httpreqline_version(rl: HTTPRequestLine) -> str:
+    return rl['version']
+
+# HTTPRequestLine representation invariant
+
+def check_httpreqline(rl: HTTPRequestLine):
+    raise NotImplementedError("check_http_request_line is not implemented yet")
+
+# HTTPRequestLine operations
+
+def httpreqline_show(rl: HTTPRequestLine) -> str:
+    return httpreqline_method(rl) + " " + httpreqline_uri(rl) + " "  + httpreqline_version(rl) + "\r\n"
+
+def httpreqline_read(s: str) -> HTTPRequestLine:
+    raise NotImplementedError("read_http_request_line is not implemented yet")
+
+rl = make_httpreqline('GET', '/', 'HTTP/1.1')
+
+# %%
+
+# TODO: fix these types
+
+# # HTTPHeaders constructor
+
+def make_httpheaders(hs: dict[str, str]) -> HTTPHeaders:
+    return {**hs, 'type': 'HTTPHeaders'}
+
+# # HTTPHeaders selectors
+
+def httpheaders_fields(hs: HTTPHeaders) -> list[str]:
+    return [k for k in hs.keys() if k != 'type']
+
+def httpheaders_lookup(hs: HTTPHeaders, field: str) -> str:
+    assert field in httpheaders_fields(hs), f"key '{field}' not found in headers"
+    return hs[field]
+
+def httpheaders_values(hs: HTTPHeaders) -> list[str]:
+    return [httpheaders_lookup(hs, f) for f in httpheaders_fields(hs)]
+
+def httpheaders_items(hs: HTTPHeaders) -> list[tuple[str, str]]:
+    return [(f, httpheaders_lookup(hs, f)) for f in httpheaders_fields(hs)]
+
+# # HTTPHeaders representation invariant
+
+def check_httpheaders(hs: HTTPHeaders):
+    raise NotImplementedError("check_http_headers is not implemented yet")
+
+# # HTTPHeaders operations
+
+def httpheaders_show(hs: HTTPHeaders) -> str:
+    return ''.join(str(f) + ": " + str(v) + "\r\n" for f, v in httpheaders_items(hs))
+
+hs = make_httpheaders({'Host': 'example.com', 'User-Agent': 'xyn/0.1', 'Accept': '*/*'})
+
+# %%
+
+# HTTPRequest constructor
+
+def make_httpreq(rl: HTTPRequestLine, hs: HTTPHeaders) -> HTTPRequest:
+    return {
+        'request_line': rl,
+        'headers': hs,
         'type': 'HTTPRequest'
     }
+
+# HTTPRequest selectors
+
+def httpreq_reqline(req: HTTPRequest) -> HTTPRequestLine:
+    return req['request_line']
+
+def httpreq_headers(req: HTTPRequest) -> HTTPHeaders:
+    return req['headers']
+
+# HTTPRequest representation invariant
+
+def check_httpreq(req: HTTPRequest):
+    raise NotImplementedError("check_http_request is not implemented yet")
+
+# HTTPRequest operations
+
+def httpreq_show(req: HTTPRequest) -> str:
+    return (httpreqline_show(httpreq_reqline(req)) +
+            httpheaders_show(httpreq_headers(req)) + "\r\n")
+
+def httpreq_read(s: str) -> HTTPRequest:
+    raise NotImplementedError("read_http_request is not implemented yet")
+
+def httpreq_print(req: HTTPRequest):
+    print(httpreq_show(req))
+
+def httpreq_send(req: HTTPRequest) -> HTTPResponse:
+   s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+req = make_httpreq(rl, hs)
 
 # req = make_http_request('GET', 'http://example.com', 'HTTP/1.1',
 #                   {'Host': 'example.com', 'User-Agent': 'xyn/0.1'})
 
-req = make_http_request('GET', '/', 'HTTP/1.1',
-                        {'Host': 'example.com', 'User-Agent': 'xyn/0.1', 'Accept': '*/*'})
+# req = make_http_request('GET', '/', 'HTTP/1.1',
+#                         {'Host': 'example.com', 'User-Agent': 'xyn/0.1', 'Accept': '*/*'})
 
 # %%
-def http_request_method(req: HTTPRequest) -> str:
-    return req['method']
-
-def http_request_uri(req: HTTPRequest) -> str:
-    return req['uri']
-
-def http_request_version(req: HTTPRequest) -> str:
-    return req['version']
-
-def http_request_headers(req: HTTPRequest) -> dict[str, str]:
-    return req['headers']
-
-# %%
-def show_http_request(req: HTTPRequest) -> str:
-    return (http_request_method(req) + " " + http_request_uri(req) + " " + http_request_version(req)  + "\r\n" +
-            show_dict_by(": ", "\r\n", http_request_headers(req)) + "\r\n" +
-            "\r\n")
-
-# print(show_http_request(req))
-
-show_http_request(req)
-
-# %%
-def read_http_request(s: str) -> HTTPRequest:
-    raise NotImplementedError("read_http_request is not implemented yet")
-
+def fetch(url: str) -> list[bytes]:
+    ...
 
 # %%
 def show_logo(l: Logo) -> str:
     return unlines(l)
+
+def read_logo(s: str) -> Logo:
+    raise NotImplementedError("read_logo is not implemented yet")
 
 def print_logo(l: Logo):
     print(show_logo(l))
@@ -522,9 +697,9 @@ def main() -> None:
     }
     dataset, aux = args.func(config, mx.random.key(seed))
     if args.all:
-        print(show_dict({k: show_list(v) for k, v in aux.items()}))
+        print(dict_show({k: list_show(v) for k, v in aux.items()}))
     print(show_header(range(1, args.n_features + 1), range(1, args.n_outputs + 1)))
-    print(show_list(dataset.tolist()))
+    print(list_show(dataset.tolist()))
 
 
 # TODO:
