@@ -143,6 +143,8 @@ def socket_recv_lines(s: Socket, n: int) -> list[bytes]:
         acc.append(socket_recvln(s))
     return acc
 
+# High-level socket operations
+
 def socket_recv_httpheaders(s: Socket) -> bytes:
     acc = []
     while not acc or last(acc) != b"\r\n":
@@ -199,7 +201,7 @@ def check_httpreqline(rl: HTTPRequestLine):
 def httpreqline_show(rl: HTTPRequestLine) -> str:
     return httpreqline_method(rl) + " " + httpreqline_uri(rl) + " "  + httpreqline_version(rl) + "\r\n"
 
-def httpreqline_read(s: str) -> HTTPRequestLine:
+def httpreqline_parse(s: str) -> HTTPRequestLine:
     raise NotImplementedError("read_http_request_line is not implemented yet")
 
 rl = make_httpreqline('GET', '/', 'HTTP/1.1')
@@ -268,9 +270,10 @@ def check_httpreq(req: HTTPRequest):
 
 def httpreq_show(req: HTTPRequest) -> str:
     return (httpreqline_show(httpreq_reqline(req)) +
-            httpheaders_show(httpreq_headers(req)) + "\r\n")
+            httpheaders_show(httpreq_headers(req)) +
+            "\r\n")
 
-def httpreq_read(s: str) -> HTTPRequest:
+def httpreq_parse(s: str) -> HTTPRequest:
     raise NotImplementedError("read_http_request is not implemented yet")
 
 def httpreq_print(req: HTTPRequest):
@@ -292,14 +295,14 @@ def fetch(url: str) -> list[bytes]:
     ...
 
 # %%
-def show_logo(l: Logo) -> str:
+def logo_show(l: Logo) -> str:
     return unlines(l)
 
-def read_logo(s: str) -> Logo:
-    raise NotImplementedError("read_logo is not implemented yet")
+def logo_parse(s: str) -> Logo:
+    raise NotImplementedError("logo_parse is not implemented yet")
 
-def print_logo(l: Logo):
-    print(show_logo(l))
+def logo_print(l: Logo):
+    print(logo_show(l))
 
 # %%
 #  DataSpec constructor
