@@ -8,7 +8,7 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from collections.abc import Iterable, Sequence
 from contextlib import contextmanager
 from functools import partial
-from typing import Callable
+from typing import Callable, Optional
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -25,6 +25,7 @@ Port = int
 Address = tuple[Host, int]
 Socket = socket.socket
 HTTPRequestLine = dict[str, any]
+HTTPStatusLine = dict[str, any]
 HTTPHeaders = dict[str, any]
 HTTPRequest = dict[str, any]
 HTTPResponse = list[bytes]
@@ -46,6 +47,9 @@ def last(xs: Sequence[any]) -> Sequence[any]:
 
 def take_last(n: int, xs: Sequence[any]):
     return xs[-n:]
+
+def lines(s: str) -> list[str]:
+    return s.split("\n")
 
 def unlines(xs: Iterable[any]) -> str:
     return "\n".join(xs)
@@ -94,83 +98,6 @@ def bits_show(x: int) -> str:
 
 # %%
 
-# Socket constructor
-
-# TODO: add types
-@contextmanager
-def make_socket() -> Socket:
-   s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-   try:
-       yield s
-   finally:
-       s.shutdown(socket.SHUT_WR)
-       s.close()
-
-# Socket representation invariant
-
-def check_socket(s: Socket):
-    raise NotImplementedError()
-
-# Socket operations
-
-def socket_connect(s: Socket, a: Address):
-    s.connect(a)
-
-def socket_send(s: Socket, bs: bytes):
-   s.sendall(bs)
-
-def socket_recv(s: Socket, n: int) -> bytes:
-    return s.recv(n)
-
-def socket_recv_char(s: Socket) -> bytes:
-    return socket_recv(s, 1)
-
-def socket_recv_while(s: Socket, pred: Callable[list[bytes], bool]) -> bytes:
-    acc = []
-    while pred(acc):
-        acc.append(socket_recv_char(s))
-    return b''.join(acc)
-
-def socket_recv_match(s: Socket, bs: list[bytes]) -> bytes:
-    assert all(len(b) == 1 for b in bs)
-    return socket_recv_while(s, lambda acc: take_last(len(bs), acc) != bs)
-
-def socket_recvln(s: Socket) -> bytes:
-    return socket_recv_match(s, [b'\n'])
-
-def socket_recv_lines(s: Socket, n: int) -> list[bytes]:
-    acc = []
-    while len(acc) < n:
-        acc.append(socket_recvln(s))
-    return acc
-
-# High-level socket operations
-
-def socket_recv_httpheaders(s: Socket) -> bytes:
-    acc = []
-    while not acc or last(acc) != b"\r\n":
-       acc.append(socket_recvln(s))
-    return b''.join(acc)
-
-def socket_recv_httpresp(s: Socket):
-    raise NotImplementedError()
-
-with make_socket() as s:
-    socket_connect(s, ("www.example.com", 80))
-    socket_send(s, httpreq_show(req).encode())
-    # chunk = socket_recv_lines(s, 3)
-    chunk = socket_recv_httpheaders(s)
-    print(chunk.decode())
-    #chunk1 = socket_recv(s, 2048)
-    #print(type(chunk1))
-    # chunk1 = socket_recv(s, 2048).decode()
-    # print(chunk1)
-    # print("---")
-    # print(chunk2)
-
-
-# %%
-
 # HTTPRequestLine constructor
 
 def make_httpreqline(meth: str, uri: str, version: str) -> HTTPRequestLine:
@@ -205,7 +132,7 @@ def httpreqline_show(rl: HTTPRequestLine) -> str:
 def httpreqline_parse(s: str) -> HTTPRequestLine:
     raise NotImplementedError("read_http_request_line is not implemented yet")
 
-rl = make_httpreqline('GET', '/', 'HTTP/1.1')
+req_line = make_httpreqline('GET', '/', 'HTTP/1.1')
 
 # %%
 
@@ -240,6 +167,9 @@ def check_httpheaders(hs: HTTPHeaders):
 
 def httpheaders_show(hs: HTTPHeaders) -> str:
     return ''.join(str(f) + ": " + str(v) + "\r\n" for f, v in httpheaders_items(hs))
+
+def httpheaders_parse(s: str) -> HTTPHeaders:
+    return make_httpheaders(dict(h.split(": ") for h in s.strip().split("\r\n")))
 
 hs = make_httpheaders({'Host': 'example.com', 'User-Agent': 'xyn/0.1', 'Accept': '*/*'})
 
@@ -283,13 +213,104 @@ def httpreq_print(req: HTTPRequest):
 def httpreq_send(req: HTTPRequest) -> HTTPResponse:
    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-req = make_httpreq(rl, hs)
+req = make_httpreq(req_line, hs)
 
 # req = make_http_request('GET', 'http://example.com', 'HTTP/1.1',
 #                   {'Host': 'example.com', 'User-Agent': 'xyn/0.1'})
 
 # req = make_http_request('GET', '/', 'HTTP/1.1',
 #                         {'Host': 'example.com', 'User-Agent': 'xyn/0.1', 'Accept': '*/*'})
+
+# %%
+
+def make_httpstatline(version: str, status: str, reason: Optional[str]) -> HTTPStatusLine:
+    return {
+        'version': version,
+        'status': status,
+        'reason': reason
+        'type': HTTPStatusLine
+    }
+
+
+resp_line = ...
+
+# %%
+
+# Socket constructor
+
+# TODO: add types
+@contextmanager
+def make_socket() -> Socket:
+   s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+   try:
+       yield s
+   finally:
+       s.shutdown(socket.SHUT_WR)
+       s.close()
+
+# Socket representation invariant
+
+def check_socket(s: Socket):
+    raise NotImplementedError()
+
+# Socket operations
+
+def socket_connect(s: Socket, a: Address):
+    s.connect(a)
+
+def socket_send(s: Socket, bs: bytes):
+   s.sendall(bs)
+
+def socket_recv(s: Socket, n: int) -> bytes:
+    return s.recv(n)
+
+def socket_recv1(s: Socket) -> bytes:
+    return socket_recv(s, 1)
+
+def socket_recv_while(s: Socket, pred: Callable[list[bytes], bool]) -> bytes:
+    acc = []
+    while pred(acc):
+        acc.append(socket_recv1(s))
+    return b''.join(acc)
+
+def socket_recv_match(s: Socket, bs: list[bytes]) -> bytes:
+    assert all(len(b) == 1 for b in bs)
+    return socket_recv_while(s, lambda acc: take_last(len(bs), acc) != bs)
+
+def socket_recvln(s: Socket) -> bytes:
+    return socket_recv_match(s, [b'\n'])
+
+def socket_recv_lines(s: Socket, n: int) -> list[bytes]:
+    acc = []
+    while len(acc) < n:
+        acc.append(socket_recvln(s))
+    return acc
+
+# High-level socket operations
+
+def socket_recv_httpheaders(s: Socket) -> bytes:
+    acc = []
+    while not acc or last(acc) != b"\r\n":
+       acc.append(socket_recvln(s))
+    return b''.join(acc)
+
+def socket_recv_httpresp(s: Socket):
+    raise NotImplementedError()
+
+with make_socket() as s:
+    socket_connect(s, ("www.example.com", 80))
+    socket_send(s, httpreq_show(req).encode())
+    # chunk = socket_recv_lines(s, 3)
+    chunk = socket_recv_httpheaders(s)
+    print(chunk.decode())
+    #chunk1 = socket_recv(s, 2048)
+    #print(type(chunk1))
+    # chunk1 = socket_recv(s, 2048).decode()
+    # print(chunk1)
+    # print("---")
+    # print(chunk2)
+
+
 
 # %%
 def fetch(url: str) -> list[bytes]:
@@ -300,7 +321,8 @@ def logo_show(l: Logo) -> str:
     return unlines(l)
 
 def logo_parse(s: str) -> Logo:
-    raise NotImplementedError("logo_parse is not implemented yet")
+    return lines(s)
+    # raise NotImplementedError("logo_parse is not implemented yet")
 
 def logo_print(l: Logo):
     print(logo_show(l))
