@@ -38,12 +38,9 @@ LOGO = [
     "(_/\\_)(__/  \\_)__)",
 ]
 
-# %%
-
 HEADER_TYPES = {
     'Content-Length': int
 }
-
 
 # %%
 
@@ -103,6 +100,29 @@ dict_show = partial(dict_show_by, "\n", "\n")
 def bits_show(x: int) -> str:
     return format(x, 'b')
 
+def bytes_show(bs: bytes) -> str:
+    return bs.decode()
+
+def body_show(bs: bytes) -> str:
+    if len(bs.split(b'\n')) == 1:
+        return bytes_show(bs)
+    elif len(bs.split(b'\n')) == 2:
+        fst, snd = bs.split(b'\n')
+        return (bytes_show(fst) + "\n" +
+                bytes_show(snd) )
+    elif len(bs.split(b'\n')) == 3:
+        fst, snd, lst = bs.split(b'\n')
+        return (bytes_show(fst) + "\n" +
+                bytes_show(snd) + "\n" +
+                bytes_show(lst))
+    else:
+        fst, snd, *_, lst = bs.split(b'\n')
+        return (bytes_show(fst) + "\n" +
+                bytes_show(snd) + "\n" +
+                "..." + "\n" +
+                bytes_show(lst))
+
+
 # %%
 
 # HTTPRequestLine constructor
@@ -153,8 +173,7 @@ def make_hhdrs(hs: dict[str, any]) -> HTTPHeaders:
 # HTTPHeaders selectors
 
 def hhdrs_fields(hs: HTTPHeaders) -> list[str]:
-    return [k for k in hs.keys() if k != 'type
-']
+    return [k for k in hs.keys() if k != 'type']
 
 def hhdrs_lookup(hs: HTTPHeaders, field: str) -> str:
     assert field in hhdrs_fields(hs), f"key '{field}' not found in headers"
@@ -263,7 +282,7 @@ def check_hstln(sl: HTTPStatusLine):
 # HTTPStatusLine operations
 
 def hstln_show(sl: HTTPStatusLine) -> str:
-    return hstln_version(sl) + " " + httpstatln_status(sl) + " " + httpstatln_reason(sl) + "\r\n"
+    return hstln_version(sl) + " " + hstln_status(sl) + " " + hstln_reason(sl) + "\r\n"
 
 def hstln_parse(s: str) -> HTTPStatusLine:
     version, status, reason = s.strip().split()
@@ -395,8 +414,7 @@ with make_sock() as s:
     sock_send(s, hrq_show(rq).encode())
 
     _stln, _hdrs, _body = sock_recv_hrs(s)
-    print(_body.decode())
-
+    print(body_show(_body.strip()))
 
 
 # %%
