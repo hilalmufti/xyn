@@ -103,6 +103,9 @@ def bits_show(x: int) -> str:
 def bytes_show(bs: bytes) -> str:
     return bs.decode()
 
+def bytes_parse(s: str) -> bytes:
+    return s.encode()
+
 def body_show(bs: bytes) -> str:
     if len(bs.split(b'\n')) == 1:
         return bytes_show(bs)
@@ -294,10 +297,11 @@ stln = make_hstln('HTTP/1.1', '200', 'OK')
 
 # HTTPResponse constructor
 
-def make_hrs(stln: HTTPStatusLine, hs: HTTPHeaders) -> HTTPResponse:
+def make_hrs(stln: HTTPStatusLine, hs: HTTPHeaders, body: bytes) -> HTTPResponse:
    return {
        'status_line': stln,
        'headers': hs,
+       'body': body,
        'type': 'HTTPResponse'
     }
 
@@ -309,6 +313,9 @@ def hrs_stln(rs: HTTPResponse) -> HTTPStatusLine:
 def hrs_hdrs(rs: HTTPResponse) -> HTTPHeaders:
     return rs['headers']
 
+def hrs_body(rs: HTTPResponse) -> bytes:
+    return rs['body']
+
 # HTTPResponse representation invariant
 
 def check_hrs(rs: HTTPResponse):
@@ -319,11 +326,13 @@ def check_hrs(rs: HTTPResponse):
 def hrs_show(rs: HTTPResponse) -> str:
     return (hstln_show(hrs_stln(rs)) +
             hhdrs_show(hrs_hdrs(rs)) +
-            "\r\n")
+            "\r\n" +
+            bytes_show(hrs_body(rs)))
 
 def hrs_parse(s: str) -> HTTPResponse:
-    stln_line, hdrs_lines = s.strip().split("\r\n", 1)
-    return make_hrs(hstln_parse(stln_line), hhdrs_parse(hdrs_lines))
+    stln_line, lines = s.strip().split("\r\n", 1)
+    hdrs_lines, body_lines = lines.rsplit("\r\n\r\n", 1)
+    return make_hrs(hstln_parse(stln_line), hhdrs_parse(hdrs_lines), bytes_parse(body_lines))
 
 hdrs_rs = make_hhdrs({
     'Content-Type': 'text/html',
@@ -334,7 +343,7 @@ hdrs_rs = make_hhdrs({
     'Connection': 'keep-alive'
 })
 
-rs = make_hrs(stln, hdrs_rs)
+rs = make_hrs(stln, hdrs_rs, b'test-body')
 
 # %%
 
