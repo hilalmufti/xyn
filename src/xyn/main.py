@@ -42,10 +42,6 @@ HEADER_TYPES = {
     'Content-Length': int
 }
 
-# TODO: remove
-MNIST_HOST = 'storage.googleapis.com'
-MNIST_URI = '/cvdf-datasets/mnist/train-images-idx3-ubyte.gz'
-
 # %%
 
 # TODO: add type hints
@@ -172,8 +168,6 @@ def hrqln_show(rl: HTTPRequestLine) -> str:
 def hrqln_parse(s: str) -> HTTPRequestLine:
     raise NotImplementedError("read_http_request_line is not implemented yet")
 
-rqln = make_hrqln('GET', '/', 'HTTP/1.1')
-
 # %%
 
 # TODO: fix these types
@@ -217,8 +211,6 @@ def hhdrs_parse(s: str) -> HTTPHeaders:
 def hhdrs_print(hs: HTTPHeaders):
     print(hhdrs_show(hs))
 
-hdrs = make_hhdrs({'Host': 'example.com', 'User-Agent': 'xyn/0.1', 'Accept': '*/*'})
-
 # %%
 
 # HTTPRequest constructor
@@ -258,14 +250,6 @@ def hrq_print(rq: HTTPRequest):
 
 def hrq_send(req: HTTPRequest) -> HTTPResponse:
    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-rq = make_hrq(rqln, hdrs)
-
-# req = make_http_request('GET', 'http://example.com', 'HTTP/1.1',
-#                   {'Host': 'example.com', 'User-Agent': 'xyn/0.1'})
-
-# req = make_http_request('GET', '/', 'HTTP/1.1',
-#                         {'Host': 'example.com', 'User-Agent': 'xyn/0.1', 'Accept': '*/*'})
 
 # %%
 
@@ -307,8 +291,6 @@ def hstln_parse(s: str) -> HTTPStatusLine:
 def hstln_print(sl: HTTPStatusLine):
     print(hstln_show(sl))
 
-stln = make_hstln('HTTP/1.1', '200', 'OK')
-
 # %%
 
 # HTTPResponse constructor
@@ -349,17 +331,6 @@ def hrs_parse(s: str) -> HTTPResponse:
     stln_line, lines = s.strip().split("\r\n", 1)
     hdrs_lines, body_lines = lines.rsplit("\r\n\r\n", 1)
     return make_hrs(hstln_parse(stln_line), hhdrs_parse(hdrs_lines), bytes_parse(body_lines))
-
-hdrs_rs = make_hhdrs({
-    'Content-Type': 'text/html',
-    'ETag': '84238dfc8092e5d9c0dac8ef93371a07:1736799080.121134',
-    'Last-Modified': 'Mon, 13 Jan 2025 20:11:20 GMT',
-    'Cache-Control': 'max-age=1139',
-    'Date': 'Thu, 05 Jun 2025 06:48:22 GMT',
-    'Connection': 'keep-alive'
-})
-
-rs = make_hrs(stln, hdrs_rs, b'test-body')
 
 # %%
 
@@ -434,35 +405,6 @@ def sock_recv_hrs(s: Socket) -> tuple[HTTPStatusLine, HTTPHeaders, bytes]:
     body = sock_recv(s, hhdrs_lookup(hdrs, 'Content-Length'))
     return stln, hdrs, body
 
-mnist_rq = make_hrq(make_hrqln('GET', MNIST_URI, 'HTTP/1.1'),
-                    make_hhdrs({
-                        'Host': MNIST_HOST,
-                        'User-Agent': 'xyn/0.1',
-                        'Accept': '*/*'
-                    }))
-
-if 'mnist_train.gz' in os.listdir('.'):
-    os.unlink('mnist_train.gz')
-
-with make_sock() as s:
-    # sock_connect(s, (MNIST_TRAIN_FILE, 80))
-    sock_connect(s, (MNIST_HOST, 80))
-    # sock_send(s, hrq_show(rq).encode())
-    sock_send(s, hrq_show(mnist_rq).encode())
-
-    _stln, _hdrs, _body = sock_recv_hrs(s)
-    _rs = make_hrs(_stln, _hdrs, _body)
-
-    hstln_print(_stln)
-    hhdrs_print(_hdrs)
-
-    with open('mnist_train.gz', 'bx') as f:
-        f.write(_body)
-    # bs = hstln_show(_stln).encode() + hhdrs_show(_hdrs).encode() + b"\r\n" + _body
-    # print(bs.decode() == hrs_show(_rs))
-    # print(body_show(_body.strip()))
-
-
 # %%
 
 def url_host(url: str) -> str:
@@ -488,20 +430,14 @@ def url_fetch(url: str) -> bytes:
     with make_sock() as s:
         sock_connect(s, (host, 80))
         rq = make_hrq(make_hrqln('GET', uri, 'HTTP/1.1'),
-                        make_hhdrs({'Host': host, 'User-Agent': 'xyn/0.1', 'Accept': '*/*'}))
+                      make_hhdrs({'Host': host,
+                                  'User-Agent': 'xyn/0.1',
+                                  'Accept': '*/*'}))
         sock_send(s, hrq_show(rq).encode())
 
         stln, hdrs, body = sock_recv_hrs(s)
-        # if hhdrs_lookup(hdrs, 'Content-Length') != str(len(body)):
-        #     raise ValueError("Content-Length header does not match body length")
+        # TODO: check body vs Content-Length
     return body
-
-if 'mnist_train.gz' in os.listdir('.'):
-    os.unlink('mnist_train.gz')
-
-with open('mnist_train.gz', 'xb') as f:
-    url = 'https://storage.googleapis.com/cvdf-datasets/mnist/train-images-idx3-ubyte.gz'
-    f.write(url_fetch(url))
 
 # %%
 def logo_show(l: Logo) -> str:
