@@ -641,16 +641,6 @@ def dataspec_fetch(spec, dest):
     assert dataspec_is_url(spec), "dataspec must be a url spec"
     return []
 
-file_url = dataspec_url(MNIST_SPEC)
-file_path = dataspec_train_inputs_file(MNIST_SPEC)
-
-if os.path.exists(file_path):
-    os.unlink(file_path)
-url = os.path.join(file_url, file_path)
-with urllib.request.urlopen(url) as req:
-    with open(file_path, 'xb') as f:
-        f.write(req.read())
-
 # %%
 sample_shape = dataspec_input_shape(MNIST_SPEC)
 sample_size = dataspec_input_size(MNIST_SPEC)
