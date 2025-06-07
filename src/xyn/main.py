@@ -42,6 +42,9 @@ HEADER_TYPES = {
     'Content-Length': int
 }
 
+# TODO: remove
+MNIST_TRAIN_FILE = 'https://storage.googleapis.com/cvdf-datasets/mnist/train-images-idx3-ubyte.gz'
+
 # %%
 
 # TODO: add type hints
@@ -419,11 +422,16 @@ def sock_recv_hrs(s: Socket) -> tuple[HTTPStatusLine, HTTPHeaders, bytes]:
     return stln, hdrs, body
 
 with make_sock() as s:
-    sock_connect(s, ("www.example.com", 80))
-    sock_send(s, hrq_show(rq).encode())
+    # sock_connect(s, (MNIST_TRAIN_FILE, 80))
+    sock_connect(s, ('storage.googleapis.com', 80))
+    # sock_send(s, hrq_show(rq).encode())
 
-    _stln, _hdrs, _body = sock_recv_hrs(s)
-    print(body_show(_body.strip()))
+    # _stln, _hdrs, _body = sock_recv_hrs(s)
+    # _rs = make_hrs(_stln, _hdrs, _body)
+
+    # bs = hstln_show(_stln).encode() + hhdrs_show(_hdrs).encode() + b"\r\n" + _body
+    # print(bs.decode() == hrs_show(_rs))
+    # print(body_show(_body.strip()))
 
 
 # %%
