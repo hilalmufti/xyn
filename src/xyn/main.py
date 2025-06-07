@@ -50,6 +50,12 @@ MNIST_URI = '/cvdf-datasets/mnist/train-images-idx3-ubyte.gz'
 
 # TODO: add type hints
 
+def first(xs: Sequence[any]) -> Sequence[any]:
+    return xs[0]
+
+def second(xs: Sequence[any]) -> Sequence[any]:
+    return xs[1]
+
 def last(xs: Sequence[any]) -> Sequence[any]:
     return xs[-1]
 
@@ -208,6 +214,9 @@ def hhdrs_show(hs: HTTPHeaders) -> str:
 def hhdrs_parse(s: str) -> HTTPHeaders:
     return make_hhdrs(dict(h.split(": ") for h in s.strip().split("\r\n")))
 
+def hhdrs_print(hs: HTTPHeaders):
+    print(hhdrs_show(hs))
+
 hdrs = make_hhdrs({'Host': 'example.com', 'User-Agent': 'xyn/0.1', 'Accept': '*/*'})
 
 # %%
@@ -294,6 +303,9 @@ def hstln_show(sl: HTTPStatusLine) -> str:
 def hstln_parse(s: str) -> HTTPStatusLine:
     version, status, reason = s.strip().split()
     return make_hstln(version, status, reason)
+
+def hstln_print(sl: HTTPStatusLine):
+    print(hstln_show(sl))
 
 stln = make_hstln('HTTP/1.1', '200', 'OK')
 
@@ -441,6 +453,9 @@ with make_sock() as s:
     _stln, _hdrs, _body = sock_recv_hrs(s)
     _rs = make_hrs(_stln, _hdrs, _body)
 
+    hstln_print(_stln)
+    hhdrs_print(_hdrs)
+
     with open('mnist_train.gz', 'bx') as f:
         f.write(_body)
     # bs = hstln_show(_stln).encode() + hhdrs_show(_hdrs).encode() + b"\r\n" + _body
@@ -449,8 +464,44 @@ with make_sock() as s:
 
 
 # %%
-def fetch(url: str) -> bytes:
-    ...
+
+def url_host(url: str) -> str:
+    if "://" in url:
+        return url_host(second(url.split("://")))
+    else:
+        return first(url.split('/'))
+
+def url_resource(url: str) -> str:
+    if "://" in url:
+        return url_resource(second(url.split("://")))
+    else:
+        parts = url.split('/', 1)
+        if len(parts) == 1:
+            return '/'
+        else:
+            return second(parts)
+
+def url_fetch(url: str) -> bytes:
+    host = url_host(url)
+    uri = url_resource(url)
+
+    with make_sock() as s:
+        sock_connect(s, (host, 80))
+        rq = make_hrq(make_hrqln('GET', uri, 'HTTP/1.1'),
+                        make_hhdrs({'Host': host, 'User-Agent': 'xyn/0.1', 'Accept': '*/*'}))
+        sock_send(s, hrq_show(rq).encode())
+
+        stln, hdrs, body = sock_recv_hrs(s)
+        # if hhdrs_lookup(hdrs, 'Content-Length') != str(len(body)):
+        #     raise ValueError("Content-Length header does not match body length")
+    return body
+
+if 'mnist_train.gz' in os.listdir('.'):
+    os.unlink('mnist_train.gz')
+
+with open('mnist_train.gz', 'xb') as f:
+    url = 'https://storage.googleapis.com/cvdf-datasets/mnist/train-images-idx3-ubyte.gz'
+    f.write(url_fetch(url))
 
 # %%
 def logo_show(l: Logo) -> str:
@@ -601,12 +652,12 @@ with urllib.request.urlopen(url) as req:
         f.write(req.read())
 
 # %%
-# sample_shape = dataspec_input_shape(MNIST_SPEC)
-# sample_size = dataspec_input_size(MNIST_SPEC)
-# header_bufsize = dataspec_input_file_header_bufsize(MNIST_SPEC)
-sample_shape = dataspec_target_shape(MNIST_SPEC)
-sample_size = dataspec_target_size(MNIST_SPEC)
-header_bufsize = dataspec_target_file_header_bufsize(MNIST_SPEC)
+sample_shape = dataspec_input_shape(MNIST_SPEC)
+sample_size = dataspec_input_size(MNIST_SPEC)
+header_bufsize = dataspec_input_file_header_bufsize(MNIST_SPEC)
+# sample_shape = dataspec_target_shape(MNIST_SPEC)
+# sample_size = dataspec_target_size(MNIST_SPEC)
+# header_bufsize = dataspec_target_file_header_bufsize(MNIST_SPEC)
 n_samples = 5
 
 with gzip.open('mnist_train.gz') as f:
