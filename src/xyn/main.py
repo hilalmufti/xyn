@@ -4,7 +4,7 @@ import os
 import stat
 import socket
 import urllib.request
-from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from argread import ArgumentParser, RawDescriptionHelpFormatter
 from collections.abc import Iterable, Sequence
 from contextlib import contextmanager
 from functools import partial
@@ -109,7 +109,7 @@ def bits_show(x: int) -> str:
 def bytes_show(bs: bytes) -> str:
     return bs.decode()
 
-def bytes_parse(s: str) -> bytes:
+def bytes_read(s: str) -> bytes:
     return s.encode()
 
 def body_show(bs: bytes) -> str:
@@ -165,7 +165,7 @@ def check_hrqln(rl: HTTPRequestLine):
 def hrqln_show(rl: HTTPRequestLine) -> str:
     return hrqln_method(rl) + " " + hrqln_uri(rl) + " "  + hrqln_version(rl) + "\r\n"
 
-def hrqln_parse(s: str) -> HTTPRequestLine:
+def hrqln_read(s: str) -> HTTPRequestLine:
     raise NotImplementedError("read_http_request_line is not implemented yet")
 
 # %%
@@ -205,7 +205,7 @@ def check_hhdrs(hs: HTTPHeaders):
 def hhdrs_show(hs: HTTPHeaders) -> str:
     return ''.join(str(f) + ": " + str(v) + "\r\n" for f, v in hhdrs_items(hs))
 
-def hhdrs_parse(s: str) -> HTTPHeaders:
+def hhdrs_read(s: str) -> HTTPHeaders:
     return make_hhdrs(dict(h.split(": ") for h in s.strip().split("\r\n")))
 
 def hhdrs_print(hs: HTTPHeaders):
@@ -242,7 +242,7 @@ def hrq_show(rq: HTTPRequest) -> str:
             hhdrs_show(hrq_hdrs(rq)) +
             "\r\n")
 
-def hrq_parse(s: str) -> HTTPRequest:
+def hrq_read(s: str) -> HTTPRequest:
     raise NotImplementedError("read_http_request is not implemented yet")
 
 def hrq_print(rq: HTTPRequest):
@@ -284,7 +284,7 @@ def check_hstln(sl: HTTPStatusLine):
 def hstln_show(sl: HTTPStatusLine) -> str:
     return hstln_version(sl) + " " + hstln_status(sl) + " " + hstln_reason(sl) + "\r\n"
 
-def hstln_parse(s: str) -> HTTPStatusLine:
+def hstln_read(s: str) -> HTTPStatusLine:
     version, status, reason = s.strip().split()
     return make_hstln(version, status, reason)
 
@@ -327,10 +327,10 @@ def hrs_show(rs: HTTPResponse) -> str:
             "\r\n" +
             bytes_show(hrs_body(rs)))
 
-def hrs_parse(s: str) -> HTTPResponse:
+def hrs_read(s: str) -> HTTPResponse:
     stln_line, lines = s.strip().split("\r\n", 1)
     hdrs_lines, body_lines = lines.rsplit("\r\n\r\n", 1)
-    return make_hrs(hstln_parse(stln_line), hhdrs_parse(hdrs_lines), bytes_parse(body_lines))
+    return make_hrs(hstln_read(stln_line), hhdrs_parse(hdrs_lines), bytes_parse(body_lines))
 
 # %%
 
@@ -400,8 +400,8 @@ def sock_recv_hhdrs(s: Socket) -> bytes:
     return b''.join(acc)
 
 def sock_recv_hrs(s: Socket) -> tuple[HTTPStatusLine, HTTPHeaders, bytes]:
-    stln = hstln_parse(sock_recvln(s).decode())
-    hdrs = hhdrs_parse(sock_recv_hhdrs(s).decode())
+    stln = hstln_read(sock_recvln(s).decode())
+    hdrs = hhdrs_read(sock_recv_hhdrs(s).decode())
     body = sock_recv(s, hhdrs_lookup(hdrs, 'Content-Length'))
     return stln, hdrs, body
 
@@ -443,9 +443,8 @@ def url_fetch(url: str) -> bytes:
 def logo_show(l: Logo) -> str:
     return unlines(l)
 
-def logo_parse(s: str) -> Logo:
+def logo_read(s: str) -> Logo:
     return lines(s)
-    # raise NotImplementedError("logo_parse is not implemented yet")
 
 def logo_print(l: Logo):
     print(logo_show(l))
@@ -691,120 +690,120 @@ def show_header(feat_ixs, out_ixs):
 
 # %%
 def main() -> None:
-    parser = ArgumentParser(
+    readr = ArgumentParser(
         prog="xyn",
         description="xyn generates xynthetic data",
         epilog=unlines(LOGO),
         formatter_class=RawDescriptionHelpFormatter,
     )
-    subparsers = parser.add_subparsers(required=True)
+    subreadrs = parser.add_subparsers(required=True)
 
-    parser_regression = subparsers.add_parser("reg")
-    parser_regression.add_argument(
+    readr_regression = subparsers.add_parser("reg")
+    readr_regression.add_argument(
         "-s",
         "--seed",
         type=int,
         default=546,
         help="Use the given random seed to generate data",
     )
-    parser_regression.add_argument(
+    readr_regression.add_argument(
         "-n",
         "--noise",
         type=float,
         default=1e-2,
         help="Amount of gaussian noise used to generate data",
     )
-    parser_regression.add_argument(
+    readr_regression.add_argument(
         "-a",
         "--all",
         action="store_true",
         help="Show all the intermediate data structures used to \
                         generate the dataset",
     )
-    parser_regression.add_argument(
+    readr_regression.add_argument(
         "n_samples", type=int, help="Number of total data samples to generate"
     )
-    parser_regression.add_argument(
+    readr_regression.add_argument(
         "n_features",
         type=int,
         help="Number of input features \
                         to generate data",
     )
-    parser_regression.add_argument(
+    readr_regression.add_argument(
         "n_outputs",
         type=int,
         default=1,
         nargs = '?',
         help="Number of output variables for each data sample"
     )
-    parser_regression.set_defaults(func=make_regression_dataset)
+    readr_regression.set_defaults(func=make_regression_dataset)
 
-    parser_sum = subparsers.add_parser("sum")
-    parser_sum.add_argument(
+    readr_sum = subparsers.add_parser("sum")
+    readr_sum.add_argument(
         "-s",
         "--seed",
         type=int,
         default=546,
         help="Use the given random seed to generate data",
     )
-    parser_sum.add_argument(
+    readr_sum.add_argument(
         "-n",
         "--noise",
         type=float,
         default=0,
         help="Amount of gaussian noise used to generate data",
     )
-    parser_sum.add_argument(
+    readr_sum.add_argument(
         "-a",
         "--all",
         action="store_true",
         help="Show all the intermediate data structures used to \
                         generate the dataset",
     )
-    parser_sum.add_argument(
+    readr_sum.add_argument(
         "n_samples", type=int, help="Number of total data samples to generate"
     )
-    parser_sum.add_argument(
+    readr_sum.add_argument(
         "n_features",
         type=int,
         help="Number of input features \
                         to generate data",
     )
-    parser_sum.add_argument(
+    readr_sum.add_argument(
         "n_outputs",
         type=int,
         default=1,
         nargs='?',
         help="Number of output variables for each data sample",
     )
-    parser_sum.set_defaults(func=make_sum_dataset)
+    readr_sum.set_defaults(func=make_sum_dataset)
 
-    parser_mixture = subparsers.add_parser("mix")
-    parser_mixture.add_argument(
+    readr_mixture = subparsers.add_parser("mix")
+    readr_mixture.add_argument(
         "-s",
         "--seed",
         type=int,
         default=546,
         help="Use the given random seed to generate data",
     )
-    parser_mixture.add_argument(
+    readr_mixture.add_argument(
         "-n",
         "--noise",
         type=float,
         default=0,
         help="Amount of gaussian noise used to generate data",
     )
-    parser_mixture.add_argument(
+    readr_mixture.add_argument(
         "-a",
         "--all",
         action="store_true",
         help="Show all the intermediate data structures used to \
                                 generate the dataset",
     )
-    parser_mixture.add_argument(
+    readr_mixture.add_argument(
         "n_samples", type=int, help="Number of total data samples to generate"
     )
-    parser_mixture.add_argument(
+    readr_mixture.add_argument(
         "n_features",
         type=int,
         default=2,
@@ -812,16 +811,16 @@ def main() -> None:
         help="Number of input features \
                         to generate data",
     )
-    parser_mixture.add_argument(
+    readr_mixture.add_argument(
         "n_outputs",
         type=int,
         default=1,
         nargs='?',
         help="Number of output variables for each data sample",
     )
-    parser_mixture.set_defaults(func=make_mixture_dataset)
+    readr_mixture.set_defaults(func=make_mixture_dataset)
 
-    args = parser.parse_args()
+    args = readr.parse_args()
 
     seed = args.seed
 
@@ -858,7 +857,7 @@ def main() -> None:
 # - [ ] feat: implement simple dataset combinators
 # - [ ] feat: implement multiple input variables in mixture dataset
 # - [ ] feat: implement covariance printing in mixture dataset
-# - [ ] enhance: refactor redundant parser arguments for mixture dataset
+# - [ ] enhance: refactor redundant readr arguments for mixture dataset
 # - [ ] feat: implement sum dataset for integral valued inputs
 # - [ ] feat: implement real-valued binary classification dataset
 # - [ ] feat: implement option to display header
@@ -877,4 +876,4 @@ def main() -> None:
 # - [ ] feat: implement multi-dimensional classification dataset
 # - [x] feat: implement splitting into train/test data (done by datasplit program)
 # - [ ] enhance: refactor make_regression_dataset, make_sum_dataset
-# - [ ] enhance: refactor parser_regression, parser_sum repeated code
+# - [ ] enhance: refactor readr_regression, parser_sum repeated code
