@@ -43,7 +43,8 @@ HEADER_TYPES = {
 }
 
 # TODO: remove
-MNIST_TRAIN_FILE = 'https://storage.googleapis.com/cvdf-datasets/mnist/train-images-idx3-ubyte.gz'
+MNIST_HOST = 'storage.googleapis.com'
+MNIST_URI = '/cvdf-datasets/mnist/train-images-idx3-ubyte.gz'
 
 # %%
 
@@ -421,21 +422,34 @@ def sock_recv_hrs(s: Socket) -> tuple[HTTPStatusLine, HTTPHeaders, bytes]:
     body = sock_recv(s, hhdrs_lookup(hdrs, 'Content-Length'))
     return stln, hdrs, body
 
+mnist_rq = make_hrq(make_hrqln('GET', MNIST_URI, 'HTTP/1.1'),
+                    make_hhdrs({
+                        'Host': MNIST_HOST,
+                        'User-Agent': 'xyn/0.1',
+                        'Accept': '*/*'
+                    }))
+
+if 'mnist_train.gz' in os.listdir('.'):
+    os.unlink('mnist_train.gz')
+
 with make_sock() as s:
     # sock_connect(s, (MNIST_TRAIN_FILE, 80))
-    sock_connect(s, ('storage.googleapis.com', 80))
+    sock_connect(s, (MNIST_HOST, 80))
     # sock_send(s, hrq_show(rq).encode())
+    sock_send(s, hrq_show(mnist_rq).encode())
 
-    # _stln, _hdrs, _body = sock_recv_hrs(s)
-    # _rs = make_hrs(_stln, _hdrs, _body)
+    _stln, _hdrs, _body = sock_recv_hrs(s)
+    _rs = make_hrs(_stln, _hdrs, _body)
 
+    with open('mnist_train.gz', 'bx') as f:
+        f.write(_body)
     # bs = hstln_show(_stln).encode() + hhdrs_show(_hdrs).encode() + b"\r\n" + _body
     # print(bs.decode() == hrs_show(_rs))
     # print(body_show(_body.strip()))
 
 
 # %%
-def fetch(url: str) -> list[bytes]:
+def fetch(url: str) -> bytes:
     ...
 
 # %%
@@ -595,7 +609,7 @@ sample_size = dataspec_target_size(MNIST_SPEC)
 header_bufsize = dataspec_target_file_header_bufsize(MNIST_SPEC)
 n_samples = 5
 
-with gzip.open(file_path) as f:
+with gzip.open('mnist_train.gz') as f:
     f.read(header_bufsize)  # skip header
     buf = f.read(sample_size * n_samples)
     data = np.frombuffer(buf, dtype=np.uint8).astype(np.float32)
