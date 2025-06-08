@@ -126,6 +126,7 @@ def bytes_read(s: str) -> bytes:
 
 # %%
 
+# TODO: shorten this
 def body_show(bs: bytes) -> str:
     match bytes_lines(bs):
         case [b]:
@@ -167,10 +168,10 @@ def hrqln_uri(rl: HTTPRequestLine) -> str:
 def hrqln_version(rl: HTTPRequestLine) -> str:
     return rl['version']
 
-# HTTPRequestLine representation invariant
+# HTTPRequestLine representation invariant/predicate
 
-def check_hrqln(rl: HTTPRequestLine):
-    raise NotImplementedError("check_http_request_line is not implemented yet")
+def is_hrqln(rl: HTTPRequestLine):
+    return rl['type'] == 'RequestLine'
 
 # HTTPRequestLine operations
 
@@ -178,7 +179,8 @@ def hrqln_show(rl: HTTPRequestLine) -> str:
     return hrqln_method(rl) + " " + hrqln_uri(rl) + " "  + hrqln_version(rl) + "\r\n"
 
 def hrqln_read(s: str) -> HTTPRequestLine:
-    raise NotImplementedError("read_http_request_line is not implemented yet")
+    method, uri, version = s.strip().split()
+    return make_hrqln(method, uri, version)
 
 # %%
 
