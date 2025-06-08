@@ -467,31 +467,9 @@ def url_read(s: str) -> URL:
                     raise ValueError("Invalid URL format")
     raise ValueError("Invalid URL format")
 
-url = make_url('http', 'example.com', 'path/to/resource')
+url = make_url('', 'example.com', 'path/to/resource')
 
-# def url_scheme(url: str) -> str:
-#     if "://" in url:
-#         return first(url.split("://"))
-#     else:
-#         return ''
-
-# def url_host(url: str) -> str:
-#     if "://" in url:
-#         return url_host(second(url.split("://")))
-#     else:
-#         return first(url.split('/'))
-
-# def url_resource(url: str) -> str:
-#     if "://" in url:
-#         return url_resource(second(url.split("://")))
-#     else:
-#         parts = url.split('/', 1)
-#         if len(parts) == 1:
-#             return '/'
-#         else:
-#             return second(parts)
-
-def url_fetch(url: str) -> bytes:
+def url_fetch(url: URL) -> bytes:
     host = url_host(url)
     uri = url_resource(url)
 
@@ -504,8 +482,13 @@ def url_fetch(url: str) -> bytes:
         sock_send(s, hrq_show(rq).encode())
 
         stln, hdrs, body = sock_recv_hrs(s)
-        # TODO: check body vs Content-Length
     return body
+
+def fetch(s: str) -> bytes:
+    url = url_read(s)
+    if not is_url(url):
+        raise ValueError("Expected a URL")
+    return url_fetch(url)
 
 # %%
 def logo_show(l: Logo) -> str:
