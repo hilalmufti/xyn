@@ -17,7 +17,7 @@ while 'src' in os.getcwd():
     os.chdir('..')
 
 # %%
-FileSpec = dict[str, any]
+DataSpec = dict[str, any]
 DataSpec = dict[str, any]
 Logo = list[str]
 Host = str
@@ -61,6 +61,9 @@ def second(xs: Sequence[any]) -> Sequence[any]:
 
 def last(xs: Sequence[any]) -> Sequence[any]:
     return xs[-1]
+
+def rest(xs: Sequence[any]) -> Sequence[any]:
+    return xs[1:]
 
 def take_last(n: int, xs: Sequence[any]):
     return xs[-n:]
@@ -518,84 +521,129 @@ if 'mnist-test-targets.gz' not in os.listdir('data'):
 
 # %%
 
-def make_fs(path: str, file_type: str, n_samples: int,
-            shape: list[int], n_header: int) -> FileSpec:
-    assert os.path.exists(path), f"File '{path}' does not exist"
+def make_network_dspec(url: str, path: str, file_type: str, n_samples: int,
+                       shape: list[int], n_header: int) -> DataSpec:
     return {
-        'path': path,
+        'data': (url, path),
+        'tag': 'network',
         'file_type': file_type,
         'n_samples': n_samples,
         'shape': shape,
         'size': reduce(mul, shape, 1),
         'n_header': n_header,
-        'type': 'FileSpec'
+        'type': 'DataSpec'
     }
 
-# FileSpec selectors
+# TODO: add file_type checking
+def make_disk_dspec(path: str, file_type: str, n_samples: int,
+                   shape: list[int], n_header: int) -> DataSpec:
+    assert os.path.exists(path), f"File '{path}' does not exist"
+    return {
+        'data': path,
+        'tag': 'disk',
+        'file_type': file_type,
+        'n_samples': n_samples,
+        'shape': shape,
+        'size': reduce(mul, shape, 1),
+        'n_header': n_header,
+        'type': 'DataSpec'
+    }
 
-def fs_path(fs: FileSpec) -> str:
-    return fs['path']
+def make_np_dspec(data: np.ndarray, n_samples: int, shape: list[int]) -> DataSpec:
+    assert len(data) == n_samples, f"Expected {n_samples} samples, got {len(data)}"
+    assert rest(list(data.shape)) == shape, f"Expected shape {shape}, got {data.shape}"
+    return {
+        'data': data,
+        'tag': 'numpy',
+        'n_samples': n_samples,
+        'shape': shape,
+        'size': reduce(mul, shape, 1)
+    }
 
-def fs_file_type(fs: FileSpec) -> str:
-    return fs['file_type']
+# DataSpec selectors
 
-def fs_n_samples(fs: FileSpec) -> int:
-    return fs['n_samples']
+def dspec_data(ds: DataSpec) -> str:
+    return ds['data']
 
-def fs_shape(fs: FileSpec) -> list[int]:
-    return fs['shape']
+def dspec_tag(ds: DataSpec) -> str:
+    return ds['tag']
 
-def fs_size(fs: FileSpec) -> int:
-    return fs['size']
+def dspec_is_network(ds: DataSpec) -> bool:
+    return dspec_tag(ds) == 'network'
 
-def fs_n_header(fs: FileSpec) -> int:
+def dspec_is_disk(ds: DataSpec) -> bool:
+    return dspec_tag(ds) == 'disk'
+
+def dspec_is_np(ds: DataSpec) -> bool:
+    return dspec_tag(ds) == 'numpy'
+
+def dspec_is_filelike(ds: DataSpec) -> bool:
+    return dspec_is_network(ds) or dspec_is_disk(ds)
+
+def dspec_is_primitive(ds: DataSpec) -> bool:
+    return dspec_is_np(ds)
+
+def dspec_is_compound(ds: DataSpec) -> bool:
+    return dspec_is_filelike(ds)
+
+def dspec_file_type(ds: DataSpec) -> str:
+    assert dspec_is_filelike(ds), "DataSpec is not a file-like type"
+    return ds['file_type']
+
+def dspec_n_header(fs: DataSpec) -> int:
+    assert dspec_is_filelike(fs), "DataSpec is not a file-like type"
     return fs['n_header']
 
-# FileSpec representation invariant
-def is_fs(fs: FileSpec) -> bool:
-    return fs['type'] == 'FileSpec'
+def dspec_n_samples(ds: DataSpec) -> int:
+    return ds['n_samples']
 
-# FileSpec operations
+def dspec_shape(ds: DataSpec) -> list[int]:
+    return ds['shape']
 
-def fs_compile(fs: FileSpec) -> np.ndarray:
-    match fs_file_type(fs):
-        case 'gzip':
-            with gzip.open(fs_path(fs), 'rb') as f:
-                f.read(fs_n_header(fs))
-                buf = f.read(fs_size(fs) * fs_n_samples(fs))
-                data = np.frombuffer(buf, dtype=np.uint8).astype(np.float32)
-                data = data.reshape(fs_n_samples(fs), *fs_shape(fs))
-                return data
-        case _:
-            raise NotImplementedError(f"File type '{fs_file_type(fs)}' not supported")
+def dspec_size(ds: DataSpec) -> int:
+    return ds['size']
 
-MNIST_TRAIN_INPUTS_SPEC = make_fs(
-    path='data/mnist-train-inputs.gz',
-    file_type='gzip',
-    n_samples=60_000,
-    shape=[28, 28],
-    n_header=16)
+# DataSpec representation invariant
 
-MNIST_TRAIN_TARGETS_SPEC = make_fs(
-    path='data/mnist-train-targets.gz',
-    file_type='gzip',
-    n_samples=60_000,
-    shape=[1],
-    n_header=8)
+def is_dspec(fs: DataSpec) -> bool:
+    return fs['type'] == 'DataSpec'
 
-MNIST_TEST_INPUTS_SPEC = make_fs(
-    path='data/mnist-test-inputs.gz',
-    file_type='gzip',
-    n_samples=10_000,
-    shape=[28, 28],
-    n_header=16)
+# DataSpec operations
 
-MNIST_TEST_TARGETS_SPEC = make_fs(
-    path='data/mnist-test-targets.gz',
-    file_type='gzip',
-    n_samples=10_000,
-    shape=[1],
-    n_header=8)
+def dspec_eval(ds: DataSpec) -> DataSpec:
+    if dspec_is_primitive(ds):
+        return ds
+    elif dspec_is_disk(ds):
+        match dspec_file_type(ds):
+            case 'gzip':
+                with gzip.open(dspec_data(ds), 'rb') as f:
+                    f.read(dspec_n_header(ds))
+                    buf = f.read(dspec_size(ds) * dspec_n_samples(ds))
+                    data = np.frombuffer(buf, dtype=np.uint8).astype(np.float32)
+                    data = data.reshape(dspec_n_samples(ds), *dspec_shape(ds))
+                    return dspec_eval(make_np_dspec(data, dspec_n_samples(ds), dspec_shape(ds)))
+            case _:
+                raise NotImplementedError(f"File type '{dspec_file_type(ds)}' not supported")
+    elif dspec_is_network(ds):
+        url, path = dspec_data(ds)
+        if os.path.exists(path):
+            return dspec_eval(make_disk_dspec(path,
+                                              dspec_file_type(ds),
+                                              dspec_n_samples(ds),
+                                              dspec_shape(ds),
+                                              dspec_n_header(ds)))
+        else:
+            body = fetch(url)
+            with open(path, 'xb') as f:
+                f.write(body)
+            return dspec_eval(make_disk_dspec(path,
+                                              dspec_file_type(ds),
+                                              dspec_n_samples(ds),
+                                              dspec_shape(ds),
+                                              dspec_n_header(ds)))
+    else:
+        raise NotImplementedError(f"DataSpec type '{dspec_tag(ds)}' not supported")
+
 
 # %%
 def logo_show(l: Logo) -> str:
