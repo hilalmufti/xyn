@@ -22,6 +22,7 @@ Host = str
 Port = int
 Address = tuple[Host, int]
 Socket = socket.socket
+URL = dict[str, str]
 HTTPRequestLine = dict[str, any]
 HTTPStatusLine = dict[str, any]
 HTTPHeaders = dict[str, any]
@@ -289,10 +290,10 @@ def hstln_status(sl: HTTPStatusLine) -> str:
 def hstln_reason(sl: HTTPStatusLine) -> Optional[str]:
     return sl['reason']
 
-# HTTPStatusLine representation invariant
+# HTTPStatusLine representation invariant/predicate
 
-def check_hstln(sl: HTTPStatusLine):
-    raise NotImplementedError("check_http_status_line is not implemented yet")
+def is_hstln(sl: HTTPStatusLine):
+    return sl['type'] == 'HTTPStatusLine'
 
 # HTTPStatusLine operations
 
@@ -331,8 +332,8 @@ def hrs_body(rs: HTTPResponse) -> bytes:
 
 # HTTPResponse representation invariant
 
-def check_hrs(rs: HTTPResponse):
-    raise NotImplementedError("check_http_response is not implemented yet")
+def is_hrs(rs: HTTPResponse):
+    return rs['type'] == 'HTTPResponse'
 
 # HTTPResponse operations
 
@@ -422,21 +423,73 @@ def sock_recv_hrs(s: Socket) -> tuple[HTTPStatusLine, HTTPHeaders, bytes]:
 
 # %%
 
-def url_host(url: str) -> str:
-    if "://" in url:
-        return url_host(second(url.split("://")))
-    else:
-        return first(url.split('/'))
+def make_url(scheme: str, host: str, resource: str) -> URL:
+    return {
+        'scheme': scheme,
+        'host': host,
+        'resource': resource,
+        'type': 'URL'
+    }
 
-def url_resource(url: str) -> str:
-    if "://" in url:
-        return url_resource(second(url.split("://")))
-    else:
-        parts = url.split('/', 1)
-        if len(parts) == 1:
-            return '/'
-        else:
-            return second(parts)
+def url_scheme(url: URL) -> str:
+    return url['scheme']
+
+def url_host(url: URL) -> str:
+    return url['host']
+
+def url_resource(url: URL) -> str:
+    return url['resource']
+
+# URL representation invariant
+
+def is_url(url: URL) -> bool:
+    return url['type'] == 'URL'
+
+# URL operations
+
+def url_show(url: URL) -> str:
+    return url_scheme(url) + "://" + url_host(url) +  "/" + url_resource(url)
+
+def url_print(url: URL):
+    print(url_show(url))
+
+def url_read(s: str) -> URL:
+    match s.strip().split("://", 1):
+        case [rest]:
+            return url_read("://" + rest)
+        case [scheme, rest]:
+            match rest.split("/", 1):
+                case [host, resource]:
+                    return make_url(scheme, host, resource)
+                case [host]:
+                    return make_url(scheme, host, '/')
+                case _:
+                    raise ValueError("Invalid URL format")
+    raise ValueError("Invalid URL format")
+
+url = make_url('http', 'example.com', 'path/to/resource')
+
+# def url_scheme(url: str) -> str:
+#     if "://" in url:
+#         return first(url.split("://"))
+#     else:
+#         return ''
+
+# def url_host(url: str) -> str:
+#     if "://" in url:
+#         return url_host(second(url.split("://")))
+#     else:
+#         return first(url.split('/'))
+
+# def url_resource(url: str) -> str:
+#     if "://" in url:
+#         return url_resource(second(url.split("://")))
+#     else:
+#         parts = url.split('/', 1)
+#         if len(parts) == 1:
+#             return '/'
+#         else:
+#             return second(parts)
 
 def url_fetch(url: str) -> bytes:
     host = url_host(url)
