@@ -1,10 +1,8 @@
 # %%
 import gzip
 import os
-import stat
 import socket
-import urllib.request
-from argread import ArgumentParser, RawDescriptionHelpFormatter
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from collections.abc import Iterable, Sequence
 from contextlib import contextmanager
 from functools import partial
@@ -106,31 +104,45 @@ dict_show = partial(dict_show_by, "\n", "\n")
 def bits_show(x: int) -> str:
     return format(x, 'b')
 
+# %%
+
+def bytes_lines(bs: bytes) -> list[bytes]:
+    return bs.split(b'\n')
+
+def bytes_unlines(lines: list[bytes]) -> bytes:
+    return b'\n'.join(lines)
+
+def bytes_words(bs: bytes) -> list[bytes]:
+    return bs.split(b' ')
+
+def bytes_unwords(words: list[bytes]) -> bytes:
+    return b' '.join(words)
+
 def bytes_show(bs: bytes) -> str:
     return bs.decode()
 
 def bytes_read(s: str) -> bytes:
     return s.encode()
 
-def body_show(bs: bytes) -> str:
-    if len(bs.split(b'\n')) == 1:
-        return bytes_show(bs)
-    elif len(bs.split(b'\n')) == 2:
-        fst, snd = bs.split(b'\n')
-        return (bytes_show(fst) + "\n" +
-                bytes_show(snd) )
-    elif len(bs.split(b'\n')) == 3:
-        fst, snd, lst = bs.split(b'\n')
-        return (bytes_show(fst) + "\n" +
-                bytes_show(snd) + "\n" +
-                bytes_show(lst))
-    else:
-        fst, snd, *_, lst = bs.split(b'\n')
-        return (bytes_show(fst) + "\n" +
-                bytes_show(snd) + "\n" +
-                "..." + "\n" +
-                bytes_show(lst))
+# %%
 
+def body_show(bs: bytes) -> str:
+    match bytes_lines(bs):
+        case [b]:
+            return bytes_show(b)
+        case [fst, snd]:
+            return bytes_show(fst) + "\n" + bytes_show(snd)
+        case [fst, snd, lst]:
+            return (bytes_show(fst) + "\n" +
+                    bytes_show(snd) + "\n" +
+                    bytes_show(lst))
+        case [fst, snd, *_, lst]:
+            return (bytes_show(fst) + "\n" +
+                    bytes_show(snd) + "\n" +
+                    "...\n" +
+                    bytes_show(lst))
+        case _:
+            raise ValueError("Unexpected number of lines in body")
 
 # %%
 
@@ -195,12 +207,12 @@ def hhdrs_values(hs: HTTPHeaders) -> list[str]:
 def hhdrs_items(hs: HTTPHeaders) -> list[tuple[str, str]]:
     return [(f, hhdrs_lookup(hs, f)) for f in hhdrs_fields(hs)]
 
-# # Hhdrs representation invariant
+# HTTPHeaders representation invariant
 
 def check_hhdrs(hs: HTTPHeaders):
     raise NotImplementedError("check_http_headers is not implemented yet")
 
-# # Hhdrs operations
+# HTTPHeaders operations
 
 def hhdrs_show(hs: HTTPHeaders) -> str:
     return ''.join(str(f) + ": " + str(v) + "\r\n" for f, v in hhdrs_items(hs))
