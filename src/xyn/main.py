@@ -209,10 +209,10 @@ def hhdrs_values(hs: HTTPHeaders) -> list[str]:
 def hhdrs_items(hs: HTTPHeaders) -> list[tuple[str, str]]:
     return [(f, hhdrs_lookup(hs, f)) for f in hhdrs_fields(hs)]
 
-# HTTPHeaders representation invariant
+# HTTPHeaders representation invariant/predicate
 
-def check_hhdrs(hs: HTTPHeaders):
-    raise NotImplementedError("check_http_headers is not implemented yet")
+def is_hhdrs(hs: HTTPHeaders):
+   return hs['type'] == 'HTTPHeaders'
 
 # HTTPHeaders operations
 
@@ -244,10 +244,10 @@ def hrq_rqln(rq: HTTPRequest) -> HTTPRequestLine:
 def hrq_hdrs(rq: HTTPRequest) -> HTTPHeaders:
     return rq['headers']
 
-# HTTPRequest representation invariant
+# HTTPRequest representation invariant/predicate
 
-def check_hrq(rq: HTTPRequest):
-    raise NotImplementedError("check_http_request is not implemented yet")
+def is_hrq(rq: HTTPRequest):
+    return rq['type'] == 'HTTPRequest'
 
 # HTTPRequest operations
 
@@ -257,7 +257,8 @@ def hrq_show(rq: HTTPRequest) -> str:
             "\r\n")
 
 def hrq_read(s: str) -> HTTPRequest:
-    raise NotImplementedError("read_http_request is not implemented yet")
+    s_rqln, s_hdrs = s.strip().split("\r\n", 1)
+    return make_hrq(hrqln_read(s_rqln), hhdrs_read(s_hdrs))
 
 def hrq_print(rq: HTTPRequest):
     print(hrq_show(rq))
