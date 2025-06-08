@@ -5,7 +5,8 @@ import socket
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from collections.abc import Iterable, Sequence
 from contextlib import contextmanager
-from functools import partial
+from functools import reduce, partial
+from operator import mul
 from typing import Callable, Optional
 
 import numpy as np
@@ -16,6 +17,7 @@ while 'src' in os.getcwd():
     os.chdir('..')
 
 # %%
+FileSpec = dict[str, any]
 DataSpec = dict[str, any]
 Logo = list[str]
 Host = str
@@ -40,6 +42,12 @@ LOGO = [
 HEADER_TYPES = {
     'Content-Length': int
 }
+
+MNIST_TRAIN_INPUTS_URL = 'https://storage.googleapis.com/cvdf-datasets/mnist/train-images-idx3-ubyte.gz'
+MNIST_TRAIN_TARGETS_URL = 'https://storage.googleapis.com/cvdf-datasets/mnist/train-labels-idx1-ubyte.gz'
+MNIST_TEST_INPUTS_URL = 'https://storage.googleapis.com/cvdf-datasets/mnist/t10k-images-idx3-ubyte.gz'
+MNIST_TEST_TARGETS_URL = 'https://storage.googleapis.com/cvdf-datasets/mnist/t10k-labels-idx1-ubyte.gz'
+
 
 # %%
 
@@ -491,6 +499,105 @@ def fetch(s: str) -> bytes:
     return url_fetch(url)
 
 # %%
+
+if 'mnist-train-inputs.gz' not in os.listdir('data'):
+    with open('data/mnist-train-inputs.gz', 'xb') as f:
+        f.write(fetch(MNIST_TRAIN_INPUTS_URL))
+
+if 'mnist-train-targets.gz' not in os.listdir('data'):
+    with open('data/mnist-train-targets.gz', 'xb') as f:
+        f.write(fetch(MNIST_TRAIN_TARGETS_URL))
+
+if 'mnist-test-inputs.gz' not in os.listdir('data'):
+    with open('data/mnist-test-inputs.gz', 'xb') as f:
+        f.write(fetch(MNIST_TEST_INPUTS_URL))
+
+if 'mnist-test-targets.gz' not in os.listdir('data'):
+    with open('data/mnist-test-targets.gz', 'xb') as f:
+        f.write(fetch(MNIST_TEST_TARGETS_URL))
+
+# %%
+
+def make_fs(path: str, file_type: str, n_samples: int,
+            shape: list[int], n_header: int) -> FileSpec:
+    assert os.path.exists(path), f"File '{path}' does not exist"
+    return {
+        'path': path,
+        'file_type': file_type,
+        'n_samples': n_samples,
+        'shape': shape,
+        'size': reduce(mul, shape, 1),
+        'n_header': n_header,
+        'type': 'FileSpec'
+    }
+
+# FileSpec selectors
+
+def fs_path(fs: FileSpec) -> str:
+    return fs['path']
+
+def fs_file_type(fs: FileSpec) -> str:
+    return fs['file_type']
+
+def fs_n_samples(fs: FileSpec) -> int:
+    return fs['n_samples']
+
+def fs_shape(fs: FileSpec) -> list[int]:
+    return fs['shape']
+
+def fs_size(fs: FileSpec) -> int:
+    return fs['size']
+
+def fs_n_header(fs: FileSpec) -> int:
+    return fs['n_header']
+
+# FileSpec representation invariant
+def is_fs(fs: FileSpec) -> bool:
+    return fs['type'] == 'FileSpec'
+
+# FileSpec operations
+
+def fs_compile(fs: FileSpec) -> np.ndarray:
+    match fs_file_type(fs):
+        case 'gzip':
+            with gzip.open(fs_path(fs), 'rb') as f:
+                f.read(fs_n_header(fs))
+                buf = f.read(fs_size(fs) * fs_n_samples(fs))
+                data = np.frombuffer(buf, dtype=np.uint8).astype(np.float32)
+                data = data.reshape(fs_n_samples(fs), *fs_shape(fs))
+                return data
+        case _:
+            raise NotImplementedError(f"File type '{fs_file_type(fs)}' not supported")
+
+MNIST_TRAIN_INPUTS_SPEC = make_fs(
+    path='data/mnist-train-inputs.gz',
+    file_type='gzip',
+    n_samples=60_000,
+    shape=[28, 28],
+    n_header=16)
+
+MNIST_TRAIN_TARGETS_SPEC = make_fs(
+    path='data/mnist-train-targets.gz',
+    file_type='gzip',
+    n_samples=60_000,
+    shape=[1],
+    n_header=8)
+
+MNIST_TEST_INPUTS_SPEC = make_fs(
+    path='data/mnist-test-inputs.gz',
+    file_type='gzip',
+    n_samples=10_000,
+    shape=[28, 28],
+    n_header=16)
+
+MNIST_TEST_TARGETS_SPEC = make_fs(
+    path='data/mnist-test-targets.gz',
+    file_type='gzip',
+    n_samples=10_000,
+    shape=[1],
+    n_header=8)
+
+# %%
 def logo_show(l: Logo) -> str:
     return unlines(l)
 
@@ -499,155 +606,6 @@ def logo_read(s: str) -> Logo:
 
 def logo_print(l: Logo):
     print(logo_show(l))
-
-# %%
-#  DataSpec constructor
-
-# TODO: refactor FileSpec into a separate data abstraction
-def make_dataspec(train_inputs_file, train_targets_file,
-                  test_inputs_file, test_targets_file,
-                  file_type,
-                  n_train, n_test,
-                  input_shape, input_size,
-                  target_shape, target_size,
-                  input_file_header_bufsize, target_file_header_bufsize,
-                  origin, extra) -> DataSpec:
-    match origin:
-        case 'url':
-            assert 'url' in extra
-            out = {
-                'train_inputs_file': train_inputs_file,
-                'train_targets_file': train_targets_file,
-                'test_inputs_file': test_inputs_file,
-                'test_targets_file': test_targets_file,
-                'file_type': file_type,
-                'n_train': n_train,
-                'n_test': n_test,
-                'input_shape': input_shape,
-                'input_size': input_size,
-                'target_shape': target_shape,
-                'target_size': target_size,
-                'input_file_header_bufsize': input_file_header_bufsize,
-                'target_file_header_bufsize': target_file_header_bufsize,
-                'origin': origin,
-                'extra': extra,
-                'type': 'DataSpec'
-            }
-            return out
-        case 'disk':
-            raise NotImplementedError()
-        case 'synthetic':
-            raise NotImplementedError()
-
-MNIST_SPEC = make_dataspec(
-    train_inputs_file='train-images-idx3-ubyte.gz',
-    train_targets_file='train-labels-idx1-ubyte.gz',
-    test_inputs_file='t10k-images-idx3-ubyte.gz',
-    test_targets_file='t10k-labels-idx1-ubyte.gz',
-    file_type='gzip',
-    n_train=60_000,
-    n_test=10_000,
-    input_shape=[28, 28],
-    input_size = 28 * 28,
-    target_shape=[1],
-    target_size=1,
-    input_file_header_bufsize=16,
-    target_file_header_bufsize=8,
-    origin='url',
-    extra={
-        'url': 'https://storage.googleapis.com/cvdf-datasets/mnist/'
-        }
-
-)
-
-# %%
-
-# DataSpec selectors
-
-def dataspec_train_inputs_file(spec):
-    return spec['train_inputs_file']
-
-def dataspec_train_targets_file(spec):
-    return spec['train_targets_file']
-
-def dataspec_test_inputs_file(spec):
-    return spec['test_inputs_file']
-
-def dataspec_test_targets_file(spec):
-    return spec['test_targets_file']
-
-def dataspec_n_train(spec):
-    return spec['n_train']
-
-def dataspec_n_test(spec):
-    return spec['n_test']
-
-def dataspec_input_shape(spec):
-    return spec['input_shape']
-
-def dataspec_input_size(spec):
-    return spec['input_size']
-
-def dataspec_target_shape(spec):
-    return spec['target_shape']
-
-def dataspec_target_size(spec):
-    return spec['target_size']
-
-def dataspec_input_file_header_bufsize(spec):
-    return spec['input_file_header_bufsize']
-
-def dataspec_target_file_header_bufsize(spec):
-    return spec['target_file_header_bufsize']
-
-def dataspec_origin(spec):
-    return spec['origin']
-
-def dataspec_extra(spec):
-    return spec['extra']
-
-def dataspec_is_url(spec):
-    return dataspec_origin(spec) == 'url'
-
-def dataspec_url(spec):
-    assert dataspec_is_url(spec), "dataspec must be a url spec"
-    return dataspec_extra(spec)['url']
-
-# %%
-
-# DataSpec representation invariant
-def check_dataspec(spec: DataSpec):
-    raise NotImplementedError()
-
-# %%
-
-# DataSpec operations
-
-def dataspec_fetch(spec, dest):
-    assert dataspec_is_url(spec), "dataspec must be a url spec"
-    return []
-
-# %%
-sample_shape = dataspec_input_shape(MNIST_SPEC)
-sample_size = dataspec_input_size(MNIST_SPEC)
-header_bufsize = dataspec_input_file_header_bufsize(MNIST_SPEC)
-# sample_shape = dataspec_target_shape(MNIST_SPEC)
-# sample_size = dataspec_target_size(MNIST_SPEC)
-# header_bufsize = dataspec_target_file_header_bufsize(MNIST_SPEC)
-n_samples = 5
-
-with gzip.open('mnist_train.gz') as f:
-    f.read(header_bufsize)  # skip header
-    buf = f.read(sample_size * n_samples)
-    data = np.frombuffer(buf, dtype=np.uint8).astype(np.float32)
-    data = data.reshape(n_samples, *sample_shape)
-
-    if len(sample_shape) == 2:
-        image = np.asarray(data[0])
-        plt.imshow(image, cmap='gray')
-        plt.show()
-
-# dataspec_fetch(MNIST_SPEC, 'data/')
 
 # %%
 def make_regression_dataset(config, key):
